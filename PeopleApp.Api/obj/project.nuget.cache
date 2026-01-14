@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "w0gXXBUF/ro=",
+  "success": true,
+  "projectFilePath": "C:\\Blazor\\PeopleApp\\PeopleApp.Api\\PeopleApp.Api.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\victr\\.nuget\\packages\\microsoft.aspnetcore.openapi\\9.0.11\\microsoft.aspnetcore.openapi.9.0.11.nupkg.sha512",
+    "C:\\Users\\victr\\.nuget\\packages\\microsoft.openapi\\1.6.17\\microsoft.openapi.1.6.17.nupkg.sha512"
+  ],
+  "logs": []
+}
