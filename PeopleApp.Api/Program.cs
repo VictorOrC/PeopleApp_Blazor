@@ -1,12 +1,49 @@
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using PeopleApp.Api.Data;
+using PeopleApp.Api.Models;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+// 1) Controllers (API real)
+builder.Services.AddControllers();
+
+// 2) OpenAPI / Swagger (tu template usa AddOpenApi; lo dejamos)
 builder.Services.AddOpenApi();
+
+// 3) DbContext (MySQL)
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+builder.Services.AddDbContext<AppDbContext>(options =>
+{
+    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
+});
+
+// 4) Identity (usuarios + roles) usando EF Core
+builder.Services
+    .AddIdentityCore<ApplicationUser>(options =>
+    {
+        // Aquí después ajustas políticas de password si quieres
+        // options.Password.RequiredLength = 8; etc.
+    })
+    .AddRoles<IdentityRole>()
+    .AddEntityFrameworkStores<AppDbContext>()
+    .AddSignInManager();
+
+// 5) CORS (para que el Client WASM consuma tu API)
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("ClientPolicy", policy =>
+    {
+        policy
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials()
+            .SetIsOriginAllowed(_ => true); // DEV ONLY (luego lo restringes)
+    });
+});
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -14,28 +51,14 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+// 6) CORS antes de mapear controllers
+app.UseCors("ClientPolicy");
 
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+// 7) (Más adelante) AuthN/AuthZ para JWT
+// app.UseAuthentication();
+app.UseAuthorization();
+
+// 8) Endpoints de controllers
+app.MapControllers();
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
