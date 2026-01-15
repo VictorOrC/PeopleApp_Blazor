@@ -1,9 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "Ip/vuANhiiU=",
+  "dgSpecHash": "8xYp02eXv60=",
   "success": true,
   "projectFilePath": "C:\\Blazor\\PeopleApp\\PeopleApp.Client\\PeopleApp.Client.csproj",
   "expectedPackageFiles": [
+    "C:\\Users\\victr\\.nuget\\packages\\blazored.localstorage\\4.3.0\\blazored.localstorage.4.3.0.nupkg.sha512",
     "C:\\Users\\victr\\.nuget\\packages\\microsoft.aspnetcore.authorization\\9.0.11\\microsoft.aspnetcore.authorization.9.0.11.nupkg.sha512",
     "C:\\Users\\victr\\.nuget\\packages\\microsoft.aspnetcore.components\\9.0.11\\microsoft.aspnetcore.components.9.0.11.nupkg.sha512",
     "C:\\Users\\victr\\.nuget\\packages\\microsoft.aspnetcore.components.analyzers\\9.0.11\\microsoft.aspnetcore.components.analyzers.9.0.11.nupkg.sha512",
