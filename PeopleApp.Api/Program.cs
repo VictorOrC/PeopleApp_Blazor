@@ -2,6 +2,11 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using PeopleApp.Api.Data;
 using PeopleApp.Api.Models;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using PeopleApp.Api.Services;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,6 +34,33 @@ builder.Services
     .AddEntityFrameworkStores<AppDbContext>()
     .AddSignInManager();
 
+
+// Autenticación JWT
+var jwtSection = builder.Configuration.GetSection("Jwt");
+var jwtKey = jwtSection["Key"]!;
+var jwtIssuer = jwtSection["Issuer"]!;
+var jwtAudience = jwtSection["Audience"]!;
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtIssuer,
+            ValidAudience = jwtAudience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            ClockSkew = TimeSpan.FromMinutes(1)
+        };
+    });
+
+builder.Services.AddAuthorization();
+
+
 // 5) CORS (para que el Client WASM consuma tu API)
 builder.Services.AddCors(options =>
 {
@@ -42,23 +74,42 @@ builder.Services.AddCors(options =>
     });
 });
 
+// Inyección de dependencia para TokenService
+builder.Services.AddScoped<TokenService>();
+
 var app = builder.Build();
+
+// Seed de roles (Admin/User) al iniciar la aplicación
+using (var scope = app.Services.CreateScope())
+{
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+
+    string[] roles = [RolesNames.Admin, RolesNames.User];
+
+    foreach (var role in roles)
+    {
+        if (!await roleManager.RoleExistsAsync(role))
+        {
+            await roleManager.CreateAsync(new IdentityRole(role));
+        }
+    }
+}
 
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 
 // 6) CORS antes de mapear controllers
 app.UseCors("ClientPolicy");
 
 // 7) (Más adelante) AuthN/AuthZ para JWT
-// app.UseAuthentication();
+app.UseAuthentication();
 app.UseAuthorization();
 
 // 8) Endpoints de controllers
 app.MapControllers();
 
-app.Run();
+await app.RunAsync();
