@@ -1,0 +1,86 @@
+@page "/login"
+@layout PeopleApp.Client.Layout.AuthLayout
+
+@using PeopleApp.Client.Dtos
+@using Radzen
+@using Radzen.Blazor
+@inject PeopleApp.Client.Services.Auth.AuthService AuthService
+@inject NavigationManager Nav
+
+<div class="auth-avatar">
+    <RadzenIcon Icon="person" Style="font-size:44px;" />
+</div>
+
+
+<h3 class="auth-title">Iniciar sesión</h3>
+
+<RadzenTemplateForm TItem="LoginRequestDto" Data="@model" Submit="@HandleLogin">
+    <RadzenStack Gap="0.9rem">
+
+        <RadzenStack Orientation="Orientation.Vertical" Gap="0.35rem">
+            <RadzenLabel Component="EmailInput">
+                <RadzenIcon Icon="mail" class="rz-mr-1" /> Email <span style="color: var(--rz-danger);">*</span>
+            </RadzenLabel>
+
+            <RadzenTextBox Name="EmailInput" @bind-Value="model.Email" Placeholder="Email" Style="width:100%" />
+
+            <RadzenRequiredValidator Component="EmailInput" Text="Email es requerido" />
+            <RadzenEmailValidator Component="EmailInput" Text="Ingresa un email válido" />
+        </RadzenStack>
+
+        <RadzenStack Orientation="Orientation.Vertical" Gap="0.35rem">
+            <RadzenLabel Component="PasswordInput">
+                <RadzenIcon Icon="lock" class="rz-mr-1" /> Contraseña <span style="color: var(--rz-danger);">*</span>
+            </RadzenLabel>
+
+            <RadzenPassword Name="PasswordInput" @bind-Value="model.Password" Placeholder="Contraseña"
+                Style="width:100%" />
+
+            <RadzenRequiredValidator Component="PasswordInput" Text="Contraseña es requerida" />
+            <RadzenLengthValidator Component="PasswordInput" Min="8"
+                Text="La contraseña debe tener mínimo 8 caracteres" />
+        </RadzenStack>
+
+
+        @if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            <RadzenAlert Severity="AlertSeverity.Error" Text="@errorMessage" />
+        }
+
+        <RadzenButton Text="Entrar" ButtonType="ButtonType.Submit"
+            Style="width:100%; height:44px;background-color:#21b5b5;" ButtonStyle="ButtonStyle.Primary"
+            Disabled="@isBusy" />
+
+        <div style="text-align:center; margin-top:6px;">
+            <span>¿No tienes cuenta?</span>
+            <a href="/register">Regístrate</a>
+        </div>
+
+    </RadzenStack>
+</RadzenTemplateForm>
+
+@code {
+    private LoginRequestDto model = new();
+    private string errorMessage = "";
+    private bool isBusy = false;
+
+    private async Task HandleLogin(LoginRequestDto model)
+    {
+        try
+        {
+            isBusy = true;
+            errorMessage = "";
+
+            await AuthService.LoginAsync(model);
+            Nav.NavigateTo("/me", replace: true);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+}

@@ -1,24 +1,28 @@
+using PeopleApp.Client.Auth;
 using PeopleApp.Client.Dtos;
 
 namespace PeopleApp.Client.Services.Auth;
 
 /// <summary>
 /// Servicio de orquestación para autenticación
-/// Combina AuthApiClient (HTTP) con TokenStore (persistencia)
+/// Combina AuthApiClient (HTTP) + TokenStore (persistencia) + JwtAuthenticationStateProvider (estado)
 /// </summary>
 public class AuthService
 {
     private readonly AuthApiClient _authApiClient;
     private readonly ITokenStore _tokenStore;
+    private readonly JwtAuthenticationStateProvider _authStateProvider;
 
-    public AuthService(AuthApiClient authApiClient, ITokenStore tokenStore)
+    public AuthService(AuthApiClient authApiClient, ITokenStore tokenStore, JwtAuthenticationStateProvider authStateProvider)
     {
         _authApiClient = authApiClient;
         _tokenStore = tokenStore;
+        _authStateProvider = authStateProvider;
     }
 
     /// <summary>
     /// Registra un nuevo usuario y guarda el token automáticamente
+    /// Notifica al AuthenticationStateProvider que el usuario está autenticado
     /// </summary>
     /// <param name="dto">Datos de registro</param>
     public async Task RegisterAsync(RegisterRequestDto dto)
@@ -30,6 +34,9 @@ public class AuthService
 
             // 2) Guardar el token en localStorage
             await _tokenStore.SetTokenAsync(authResponse.Token);
+
+            // 3) Notificar al AuthenticationStateProvider que el usuario está autenticado
+            _authStateProvider.NotifyUserAuthentication(authResponse.Token);
         }
         catch (Exception ex)
         {
@@ -39,6 +46,7 @@ public class AuthService
 
     /// <summary>
     /// Autentica un usuario y guarda el token automáticamente
+    /// Notifica al AuthenticationStateProvider que el usuario está autenticado
     /// </summary>
     /// <param name="dto">Credenciales de login</param>
     public async Task LoginAsync(LoginRequestDto dto)
@@ -50,6 +58,9 @@ public class AuthService
 
             // 2) Guardar el token en localStorage
             await _tokenStore.SetTokenAsync(authResponse.Token);
+
+            // 3) Notificar al AuthenticationStateProvider que el usuario está autenticado
+            _authStateProvider.NotifyUserAuthentication(authResponse.Token);
         }
         catch (Exception ex)
         {
@@ -59,13 +70,17 @@ public class AuthService
 
     /// <summary>
     /// Cierra sesión eliminando el token
+    /// Notifica al AuthenticationStateProvider que el usuario se desautenticó
     /// </summary>
     public async Task LogoutAsync()
     {
         try
         {
-            // Eliminar el token del localStorage
+            // 1) Eliminar el token del localStorage
             await _tokenStore.ClearAsync();
+
+            // 2) Notificar al AuthenticationStateProvider que el usuario se desautenticó
+            _authStateProvider.NotifyUserLogout();
         }
         catch (Exception ex)
         {

@@ -1,0 +1,164 @@
+@page "/register"
+@layout PeopleApp.Client.Layout.AuthLayout
+
+@using Radzen
+@using Radzen.Blazor
+@using PeopleApp.Client.Dtos
+@inject PeopleApp.Client.Services.Auth.AuthService AuthService
+@inject NavigationManager Nav
+
+<div class="auth-avatar">
+    <RadzenIcon Icon="person_add" Style="font-size:44px; color:#fff;" />
+</div>
+
+
+<h3 class="auth-title">Crear cuenta</h3>
+
+<RadzenTemplateForm TItem="RegisterRequestDto" Data="@form" Submit="@HandleRegister">
+    <RadzenStack Gap="0.9rem">
+
+        <RadzenStack Orientation="Orientation.Vertical" Gap="0.35rem">
+            <RadzenLabel Component="FirstNameInput">
+                <RadzenIcon Icon="person" class="rz-mr-1" /> Nombre <span style="color: var(--rz-danger);">*</span>
+            </RadzenLabel>
+            <RadzenTextBox Name="FirstNameInput" @bind-Value="form.FirstName" Placeholder="Nombre" Style="width:100%" />
+            <RadzenRequiredValidator Component="FirstNameInput" Text="Nombre es requerido" />
+        </RadzenStack>
+
+        <RadzenStack Orientation="Orientation.Vertical" Gap="0.35rem">
+            <RadzenLabel Component="LastNameInput">
+                <RadzenIcon Icon="badge" class="rz-mr-1" /> Apellido <span style="color: var(--rz-danger);">*</span>
+            </RadzenLabel>
+            <RadzenTextBox Name="LastNameInput" @bind-Value="form.LastName" Placeholder="Apellido" Style="width:100%" />
+            <RadzenRequiredValidator Component="LastNameInput" Text="Apellido es requerido" />
+        </RadzenStack>
+
+        <RadzenStack Orientation="Orientation.Vertical" Gap="0.35rem">
+            <RadzenLabel Component="PhoneInput">
+                <RadzenIcon Icon="call" class="rz-mr-1" /> Teléfono <span style="color: var(--rz-danger);">*</span>
+            </RadzenLabel>
+            <RadzenTextBox Name="PhoneInput" @bind-Value="form.PhoneNumber" Placeholder="Teléfono" Style="width:100%"
+                InputAttributes="@(new Dictionary<string, object>
+                {
+                    ["inputmode"] = "numeric",
+                    ["pattern"] = "[0-9]*",
+                    ["maxlength"] = "10"
+                })" Change="@OnPhoneChanged" />
+
+            <RadzenRequiredValidator Component="PhoneInput" Text="Teléfono es requerido" />
+            <RadzenLengthValidator Component="PhoneInput" Min="10" Text="El teléfono debe tener mínimo 10 dígitos" />
+        </RadzenStack>
+
+        <RadzenStack Orientation="Orientation.Vertical" Gap="0.35rem">
+            <RadzenLabel Component="EmailInput">
+                <RadzenIcon Icon="mail" class="rz-mr-1" /> Email <span style="color: var(--rz-danger);">*</span>
+            </RadzenLabel>
+            <RadzenTextBox Name="EmailInput" @bind-Value="form.Email" Placeholder="Email" Style="width:100%" />
+            <RadzenRequiredValidator Component="EmailInput" Text="Email es requerido" />
+            <RadzenEmailValidator Component="EmailInput" Text="Ingresa un email válido" />
+        </RadzenStack>
+
+        <RadzenStack Orientation="Orientation.Vertical" Gap="0.35rem">
+            <RadzenLabel Component="PasswordInput">
+                <RadzenIcon Icon="lock" class="rz-mr-1" /> Contraseña <span style="color: var(--rz-danger);">*</span>
+            </RadzenLabel>
+
+            <RadzenPassword Name="PasswordInput" @bind-Value="form.Password" Placeholder="Contraseña"
+                Style="width:100%" />
+
+            <RadzenRequiredValidator Component="PasswordInput" Text="Contraseña es requerida" />
+            <RadzenCustomValidator Component="PasswordInput" Validator="@ValidatePassword" Text="@passwordRulesError" />
+
+        </RadzenStack>
+
+        <RadzenStack Orientation="Orientation.Vertical" Gap="0.35rem">
+            <RadzenLabel Component="ConfirmPasswordInput">
+                <RadzenIcon Icon="lock" class="rz-mr-1" /> Confirmar contraseña <span
+                    style="color: var(--rz-danger);">*</span>
+            </RadzenLabel>
+
+            <RadzenPassword Name="ConfirmPasswordInput" @bind-Value="form.ConfirmPassword"
+                Placeholder="Confirmar contraseña" Style="width:100%" />
+
+            <RadzenRequiredValidator Component="ConfirmPasswordInput" Text="Confirmación es requerida" />
+            <RadzenCompareValidator Component="ConfirmPasswordInput" Value="@form.Password"
+                Operator="CompareOperator.Equal" Text="Las contraseñas no coinciden" />
+        </RadzenStack>
+
+        @if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            <RadzenAlert Severity="AlertSeverity.Error" Text="@errorMessage" />
+        }
+
+        <RadzenButton Text="Registrarse" ButtonType="ButtonType.Submit"
+            Style="width:100%; height:44px; background-color:#21b5b5;" ButtonStyle="ButtonStyle.Primary"
+            Disabled="@isBusy" />
+
+        <div style="text-align:center; margin-top:6px;">
+            <span>¿Ya tienes cuenta?</span>
+            <a href="/login">Inicia sesión</a>
+        </div>
+
+    </RadzenStack>
+</RadzenTemplateForm>
+
+
+@code {
+    private RegisterRequestDto form = new();
+    private string errorMessage = "";
+    private bool isBusy = false;
+
+    private async Task HandleRegister(RegisterRequestDto form)
+    {
+        try
+        {
+            isBusy = true;
+            errorMessage = "";
+
+            if (form.Password != form.ConfirmPassword)
+            {
+                errorMessage = "Las contraseñas no coinciden.";
+                return;
+            }
+
+            await AuthService.RegisterAsync(form);
+            Nav.NavigateTo("/me", replace: true);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+
+    private string passwordRulesError = "La contraseña debe tener mayúscula, minúscula, número y símbolo.";
+
+    private bool ValidatePassword()
+    {
+        var p = form.Password ?? "";
+
+        bool hasUpper = p.Any(char.IsUpper);
+        bool hasLower = p.Any(char.IsLower);
+        bool hasDigit = p.Any(char.IsDigit);
+        bool hasSymbol = p.Any(ch => !char.IsLetterOrDigit(ch));
+
+        if (p.Length < 8) { passwordRulesError = "Debe tener mínimo 8 caracteres."; return false; }
+        if (!hasUpper) { passwordRulesError = "Debe incluir al menos 1 letra mayúscula."; return false; }
+        if (!hasLower) { passwordRulesError = "Debe incluir al menos 1 letra minúscula."; return false; }
+        if (!hasDigit) { passwordRulesError = "Debe incluir al menos 1 número."; return false; }
+        if (!hasSymbol) { passwordRulesError = "Debe incluir al menos 1 símbolo (ej. !@#$)."; return false; }
+
+        return true;
+    }
+
+    private void OnPhoneChanged(object? value)
+    {
+        var s = value?.ToString() ?? "";
+        form.PhoneNumber = new string(s.Where(char.IsDigit).ToArray());
+    }
+
+
+}

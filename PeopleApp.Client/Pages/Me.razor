@@ -1,0 +1,63 @@
+@page "/me"
+@using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
+@using PeopleApp.Client.Services.Auth
+@using PeopleApp.Client.Dtos
+@attribute [Authorize]
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+
+<div class="container mt-5">
+    <h2>Mi Perfil</h2>
+
+    <AuthorizeView>
+        <Authorized>
+            @if (user != null)
+            {
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Datos del Usuario</h5>
+                        <p><strong>Email:</strong> @user.Email</p>
+                        <p><strong>Nombre:</strong> @user.FirstName</p>
+                        <p><strong>Apellido:</strong> @user.LastName</p>
+                        <p><strong>Teléfono:</strong> @user.PhoneNumber</p>
+                        <p><strong>ID:</strong> @user.Id</p>
+                    </div>
+                </div>
+            }
+            else if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger">@errorMessage</div>
+            }
+            else
+            {
+                <p>Cargando datos...</p>
+            }
+        </Authorized>
+        <NotAuthorized>
+            <div class="alert alert-warning">
+                Debes estar autenticado para ver esta página.
+                <a href="/login">Ir a login</a>
+            </div>
+        </NotAuthorized>
+    </AuthorizeView>
+</div>
+
+@code {
+    private UserMeDto? user;
+    private string errorMessage = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Llamar a MeAsync() para obtener los datos del usuario autenticado
+            user = await AuthService.GetUserAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error al cargar datos: {ex.Message}";
+            Console.WriteLine(errorMessage);
+        }
+    }
+}
