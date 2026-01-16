@@ -35,11 +35,19 @@ public class TokenService
         // 3) Claims = datos dentro del token
         var claims = new List<Claim>
         {
-            new(JwtRegisteredClaimNames.Sub, user.Id),                // ID del usuario
-            new(JwtRegisteredClaimNames.Email, user.Email ?? ""),     // Email
-            new("firstName", user.FirstName),
-            new("lastName", user.LastName),
+            // ✅ Identity standard (clave)
+            new(ClaimTypes.NameIdentifier, user.Id),
+
+            // ✅ JWT standard (opcional pero bien)
+            new(JwtRegisteredClaimNames.Sub, user.Id),
+
+            // Mejor usar ClaimTypes.Email (más compatible)
+            new(ClaimTypes.Email, user.Email ?? ""),
+
+            new("firstName", user.FirstName ?? ""),
+            new("lastName", user.LastName ?? ""),
         };
+
 
         // 4) Agregar roles como claims (esto permite [Authorize(Roles="Admin")])
         foreach (var role in roles)
