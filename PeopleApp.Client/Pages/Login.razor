@@ -25,6 +25,7 @@
             <RadzenTextBox Name="EmailInput" @bind-Value="model.Email" Placeholder="Email" Style="width:100%" />
 
             <RadzenRequiredValidator Component="EmailInput" Text="Email es requerido" />
+            <RadzenEmailValidator Component="EmailInput" Text="Ingresa un email válido" />
         </RadzenStack>
 
         <RadzenStack Orientation="Orientation.Vertical" Gap="0.35rem">
@@ -36,7 +37,10 @@
                 Style="width:100%" />
 
             <RadzenRequiredValidator Component="PasswordInput" Text="Contraseña es requerida" />
+            <RadzenLengthValidator Component="PasswordInput" Min="8"
+                Text="La contraseña debe tener mínimo 8 caracteres" />
         </RadzenStack>
+
 
         @if (!string.IsNullOrWhiteSpace(errorMessage))
         {

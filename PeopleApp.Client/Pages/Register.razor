@@ -37,8 +37,16 @@
             <RadzenLabel Component="PhoneInput">
                 <RadzenIcon Icon="call" class="rz-mr-1" /> Teléfono <span style="color: var(--rz-danger);">*</span>
             </RadzenLabel>
-            <RadzenTextBox Name="PhoneInput" @bind-Value="form.PhoneNumber" Placeholder="Teléfono" Style="width:100%" />
+            <RadzenTextBox Name="PhoneInput" @bind-Value="form.PhoneNumber" Placeholder="Teléfono" Style="width:100%"
+                InputAttributes="@(new Dictionary<string, object>
+                {
+                    ["inputmode"] = "numeric",
+                    ["pattern"] = "[0-9]*",
+                    ["maxlength"] = "10"
+                })" Change="@OnPhoneChanged" />
+
             <RadzenRequiredValidator Component="PhoneInput" Text="Teléfono es requerido" />
+            <RadzenLengthValidator Component="PhoneInput" Min="10" Text="El teléfono debe tener mínimo 10 dígitos" />
         </RadzenStack>
 
         <RadzenStack Orientation="Orientation.Vertical" Gap="0.35rem">
@@ -47,15 +55,20 @@
             </RadzenLabel>
             <RadzenTextBox Name="EmailInput" @bind-Value="form.Email" Placeholder="Email" Style="width:100%" />
             <RadzenRequiredValidator Component="EmailInput" Text="Email es requerido" />
+            <RadzenEmailValidator Component="EmailInput" Text="Ingresa un email válido" />
         </RadzenStack>
 
         <RadzenStack Orientation="Orientation.Vertical" Gap="0.35rem">
             <RadzenLabel Component="PasswordInput">
                 <RadzenIcon Icon="lock" class="rz-mr-1" /> Contraseña <span style="color: var(--rz-danger);">*</span>
             </RadzenLabel>
+
             <RadzenPassword Name="PasswordInput" @bind-Value="form.Password" Placeholder="Contraseña"
                 Style="width:100%" />
+
             <RadzenRequiredValidator Component="PasswordInput" Text="Contraseña es requerida" />
+            <RadzenCustomValidator Component="PasswordInput" Validator="@ValidatePassword" Text="@passwordRulesError" />
+
         </RadzenStack>
 
         <RadzenStack Orientation="Orientation.Vertical" Gap="0.35rem">
@@ -63,9 +76,13 @@
                 <RadzenIcon Icon="lock" class="rz-mr-1" /> Confirmar contraseña <span
                     style="color: var(--rz-danger);">*</span>
             </RadzenLabel>
+
             <RadzenPassword Name="ConfirmPasswordInput" @bind-Value="form.ConfirmPassword"
                 Placeholder="Confirmar contraseña" Style="width:100%" />
+
             <RadzenRequiredValidator Component="ConfirmPasswordInput" Text="Confirmación es requerida" />
+            <RadzenCompareValidator Component="ConfirmPasswordInput" Value="@form.Password"
+                Operator="CompareOperator.Equal" Text="Las contraseñas no coinciden" />
         </RadzenStack>
 
         @if (!string.IsNullOrWhiteSpace(errorMessage))
@@ -84,6 +101,7 @@
 
     </RadzenStack>
 </RadzenTemplateForm>
+
 
 @code {
     private RegisterRequestDto form = new();
@@ -115,5 +133,32 @@
             isBusy = false;
         }
     }
+
+    private string passwordRulesError = "La contraseña debe tener mayúscula, minúscula, número y símbolo.";
+
+    private bool ValidatePassword()
+    {
+        var p = form.Password ?? "";
+
+        bool hasUpper = p.Any(char.IsUpper);
+        bool hasLower = p.Any(char.IsLower);
+        bool hasDigit = p.Any(char.IsDigit);
+        bool hasSymbol = p.Any(ch => !char.IsLetterOrDigit(ch));
+
+        if (p.Length < 8) { passwordRulesError = "Debe tener mínimo 8 caracteres."; return false; }
+        if (!hasUpper) { passwordRulesError = "Debe incluir al menos 1 letra mayúscula."; return false; }
+        if (!hasLower) { passwordRulesError = "Debe incluir al menos 1 letra minúscula."; return false; }
+        if (!hasDigit) { passwordRulesError = "Debe incluir al menos 1 número."; return false; }
+        if (!hasSymbol) { passwordRulesError = "Debe incluir al menos 1 símbolo (ej. !@#$)."; return false; }
+
+        return true;
+    }
+
+    private void OnPhoneChanged(object? value)
+    {
+        var s = value?.ToString() ?? "";
+        form.PhoneNumber = new string(s.Where(char.IsDigit).ToArray());
+    }
+
 
 }
