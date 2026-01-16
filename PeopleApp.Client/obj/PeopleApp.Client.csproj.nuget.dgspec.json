@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Blazor\\PeopleApp\\PeopleApp.Client\\PeopleApp.Client.csproj": {}
+    "C:\\Blazor\\PeopleApp\\peopleapp.client\\PeopleApp.Client.csproj": {}
   },
   "projects": {
-    "C:\\Blazor\\PeopleApp\\PeopleApp.Client\\PeopleApp.Client.csproj": {
+    "C:\\Blazor\\PeopleApp\\peopleapp.client\\PeopleApp.Client.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Blazor\\PeopleApp\\PeopleApp.Client\\PeopleApp.Client.csproj",
+        "projectUniqueName": "C:\\Blazor\\PeopleApp\\peopleapp.client\\PeopleApp.Client.csproj",
         "projectName": "PeopleApp.Client",
-        "projectPath": "C:\\Blazor\\PeopleApp\\PeopleApp.Client\\PeopleApp.Client.csproj",
+        "projectPath": "C:\\Blazor\\PeopleApp\\peopleapp.client\\PeopleApp.Client.csproj",
         "packagesPath": "C:\\Users\\victr\\.nuget\\packages\\",
-        "outputPath": "C:\\Blazor\\PeopleApp\\PeopleApp.Client\\obj\\",
+        "outputPath": "C:\\Blazor\\PeopleApp\\peopleapp.client\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\victr\\AppData\\Roaming\\NuGet\\NuGet.Config"
@@ -48,6 +48,10 @@
               "target": "Package",
               "version": "[4.3.0, )"
             },
+            "Microsoft.AspNetCore.Components.Authorization": {
+              "target": "Package",
+              "version": "[9.0.11, )"
+            },
             "Microsoft.AspNetCore.Components.WebAssembly": {
               "target": "Package",
               "version": "[9.0.11, )"
@@ -68,6 +72,14 @@
               "target": "Package",
               "version": "[10.0.1, )",
               "autoReferenced": true
+            },
+            "Radzen.Blazor": {
+              "target": "Package",
+              "version": "[8.6.2, )"
+            },
+            "System.IdentityModel.Tokens.Jwt": {
+              "target": "Package",
+              "version": "[8.1.0, )"
             }
           },
           "imports": [

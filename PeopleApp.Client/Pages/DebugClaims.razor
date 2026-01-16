@@ -1,0 +1,38 @@
+@page "/debug-claims"
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthStateProvider
+
+<h3>Debug Claims</h3>
+
+<AuthorizeView>
+    <Authorized>
+        <p>Autenticado ✅</p>
+
+        @if (claims is null)
+        {
+            <p>Cargando...</p>
+        }
+        else
+        {
+            <ul>
+                @foreach (var c in claims)
+                {
+                    <li><b>@c.Type</b> = @c.Value</li>
+                }
+            </ul>
+        }
+    </Authorized>
+    <NotAuthorized>
+        <p>No autenticado ❌</p>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private List<System.Security.Claims.Claim>? claims;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        claims = state.User.Claims.ToList();
+    }
+}

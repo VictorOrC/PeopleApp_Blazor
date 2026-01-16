@@ -1,0 +1,119 @@
+@page "/register"
+@layout PeopleApp.Client.Layout.AuthLayout
+
+@using Radzen
+@using Radzen.Blazor
+@using PeopleApp.Client.Dtos
+@inject PeopleApp.Client.Services.Auth.AuthService AuthService
+@inject NavigationManager Nav
+
+<div class="auth-avatar">
+    <RadzenIcon Icon="person_add" Style="font-size:44px; color:#fff;" />
+</div>
+
+
+<h3 class="auth-title">Crear cuenta</h3>
+
+<RadzenTemplateForm TItem="RegisterRequestDto" Data="@form" Submit="@HandleRegister">
+    <RadzenStack Gap="0.9rem">
+
+        <RadzenStack Orientation="Orientation.Vertical" Gap="0.35rem">
+            <RadzenLabel Component="FirstNameInput">
+                <RadzenIcon Icon="person" class="rz-mr-1" /> Nombre <span style="color: var(--rz-danger);">*</span>
+            </RadzenLabel>
+            <RadzenTextBox Name="FirstNameInput" @bind-Value="form.FirstName" Placeholder="Nombre" Style="width:100%" />
+            <RadzenRequiredValidator Component="FirstNameInput" Text="Nombre es requerido" />
+        </RadzenStack>
+
+        <RadzenStack Orientation="Orientation.Vertical" Gap="0.35rem">
+            <RadzenLabel Component="LastNameInput">
+                <RadzenIcon Icon="badge" class="rz-mr-1" /> Apellido <span style="color: var(--rz-danger);">*</span>
+            </RadzenLabel>
+            <RadzenTextBox Name="LastNameInput" @bind-Value="form.LastName" Placeholder="Apellido" Style="width:100%" />
+            <RadzenRequiredValidator Component="LastNameInput" Text="Apellido es requerido" />
+        </RadzenStack>
+
+        <RadzenStack Orientation="Orientation.Vertical" Gap="0.35rem">
+            <RadzenLabel Component="PhoneInput">
+                <RadzenIcon Icon="call" class="rz-mr-1" /> Teléfono <span style="color: var(--rz-danger);">*</span>
+            </RadzenLabel>
+            <RadzenTextBox Name="PhoneInput" @bind-Value="form.PhoneNumber" Placeholder="Teléfono" Style="width:100%" />
+            <RadzenRequiredValidator Component="PhoneInput" Text="Teléfono es requerido" />
+        </RadzenStack>
+
+        <RadzenStack Orientation="Orientation.Vertical" Gap="0.35rem">
+            <RadzenLabel Component="EmailInput">
+                <RadzenIcon Icon="mail" class="rz-mr-1" /> Email <span style="color: var(--rz-danger);">*</span>
+            </RadzenLabel>
+            <RadzenTextBox Name="EmailInput" @bind-Value="form.Email" Placeholder="Email" Style="width:100%" />
+            <RadzenRequiredValidator Component="EmailInput" Text="Email es requerido" />
+        </RadzenStack>
+
+        <RadzenStack Orientation="Orientation.Vertical" Gap="0.35rem">
+            <RadzenLabel Component="PasswordInput">
+                <RadzenIcon Icon="lock" class="rz-mr-1" /> Contraseña <span style="color: var(--rz-danger);">*</span>
+            </RadzenLabel>
+            <RadzenPassword Name="PasswordInput" @bind-Value="form.Password" Placeholder="Contraseña"
+                Style="width:100%" />
+            <RadzenRequiredValidator Component="PasswordInput" Text="Contraseña es requerida" />
+        </RadzenStack>
+
+        <RadzenStack Orientation="Orientation.Vertical" Gap="0.35rem">
+            <RadzenLabel Component="ConfirmPasswordInput">
+                <RadzenIcon Icon="lock" class="rz-mr-1" /> Confirmar contraseña <span
+                    style="color: var(--rz-danger);">*</span>
+            </RadzenLabel>
+            <RadzenPassword Name="ConfirmPasswordInput" @bind-Value="form.ConfirmPassword"
+                Placeholder="Confirmar contraseña" Style="width:100%" />
+            <RadzenRequiredValidator Component="ConfirmPasswordInput" Text="Confirmación es requerida" />
+        </RadzenStack>
+
+        @if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            <RadzenAlert Severity="AlertSeverity.Error" Text="@errorMessage" />
+        }
+
+        <RadzenButton Text="Registrarse" ButtonType="ButtonType.Submit"
+            Style="width:100%; height:44px; background-color:#21b5b5;" ButtonStyle="ButtonStyle.Primary"
+            Disabled="@isBusy" />
+
+        <div style="text-align:center; margin-top:6px;">
+            <span>¿Ya tienes cuenta?</span>
+            <a href="/login">Inicia sesión</a>
+        </div>
+
+    </RadzenStack>
+</RadzenTemplateForm>
+
+@code {
+    private RegisterRequestDto form = new();
+    private string errorMessage = "";
+    private bool isBusy = false;
+
+    private async Task HandleRegister(RegisterRequestDto form)
+    {
+        try
+        {
+            isBusy = true;
+            errorMessage = "";
+
+            if (form.Password != form.ConfirmPassword)
+            {
+                errorMessage = "Las contraseñas no coinciden.";
+                return;
+            }
+
+            await AuthService.RegisterAsync(form);
+            Nav.NavigateTo("/me", replace: true);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+
+}
