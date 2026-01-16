@@ -1,0 +1,137 @@
+@page "/all-people"
+
+<h3>Catálogo de Personas</h3>
+
+<div class="mb-3">
+    Nombre: <input class="form-control mb-2"  @bind="personaForm.Nombre" />
+    Edad: <input class="form-control mb-2" type="number" placeholder="Edad" @bind="personaForm.Edad" />
+    Estatura: <input class="form-control mb-2" type="number" step="0.01" placeholder="Estatura" @bind="personaForm.Estatura" />
+    Peso: <input class="form-control mb-2" type="number" step="0.01" placeholder="Peso" @bind="personaForm.Peso" />
+    Descripción: <input class="form-control mb-2" placeholder="Descripción" @bind="personaForm.Descripcion" />
+    <br />
+    @if (editando)
+    {
+        <button class="btn btn-success me-2" @onclick="GuardarCambios">
+            Actualizar
+        </button>
+        <button class="btn btn-secondary" @onclick="Cancelar">
+            Cancelar
+        </button>
+    }
+    else
+    {
+        <button class="btn btn-primary" @onclick="AgregarPersona">
+            Agregar Persona
+        </button>
+    }
+</div>
+
+<hr />
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Nombre</th>
+            <th>Edad</th>
+            <th>Estatura</th>
+            <th>Peso</th>
+            <th>Descripción</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var p in personas)
+        {
+            <tr>
+                <td>@p.Nombre</td>
+                <td>@p.Edad</td>
+                <td>@p.Estatura</td>
+                <td>@p.Peso</td>
+                <td>@p.Descripcion</td>
+                <td>
+                    <button class="btn btn-primary"
+                            @onclick="() => Editar(p)">
+                        Editar
+                    </button>
+                    <button class="btn btn-sm btn-danger"
+                            @onclick="() => Eliminar(p)">
+                        Borrar
+                    </button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    List<Persona> personas = new();
+
+    Persona personaForm = new();
+    Persona personaEditando = null;
+    bool editando = false;
+
+    void AgregarPersona()
+    {
+        personas.Add(new Persona
+        {
+            Nombre = personaForm.Nombre,
+            Edad = personaForm.Edad,
+            Estatura = personaForm.Estatura,
+            Peso = personaForm.Peso,
+            Descripcion = personaForm.Descripcion
+        });
+
+        LimpiarFormulario();
+    }
+
+    void Editar(Persona persona)
+    {
+        personaEditando = persona;
+        personaForm = new Persona
+        {
+            Nombre = persona.Nombre,
+            Edad = persona.Edad,
+            Estatura = persona.Estatura,
+            Peso = persona.Peso,
+            Descripcion = persona.Descripcion
+        };
+        editando = true;
+    }
+
+    void GuardarCambios()
+    {
+        personaEditando.Nombre = personaForm.Nombre;
+        personaEditando.Edad = personaForm.Edad;
+        personaEditando.Estatura = personaForm.Estatura;
+        personaEditando.Peso = personaForm.Peso;
+        personaEditando.Descripcion = personaForm.Descripcion;
+
+        LimpiarFormulario();
+    }
+
+    void Eliminar(Persona persona)
+    {
+        personas.Remove(persona);
+    }
+
+    void Cancelar()
+    {
+        LimpiarFormulario();
+    }
+
+    void LimpiarFormulario()
+    {
+        personaForm = new Persona();
+        personaEditando = null;
+        editando = false;
+    }
+
+    class Persona
+    {
+        public string Nombre { get; set; }
+        public int Edad { get; set; }
+        public float Estatura { get; set; }
+        public float Peso { get; set; }
+        public string Descripcion { get; set; }
+    }
+}
