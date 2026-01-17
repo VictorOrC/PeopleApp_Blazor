@@ -6,6 +6,7 @@
 @using Radzen.Blazor
 @inject PeopleApp.Client.Services.Auth.AuthService AuthService
 @inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthStateProvider
 
 <div class="auth-avatar">
     <RadzenIcon Icon="person" Style="font-size:44px;" />
@@ -63,6 +64,13 @@
     private LoginRequestDto model = new();
     private string errorMessage = "";
     private bool isBusy = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (state.User.Identity?.IsAuthenticated == true)
+            Nav.NavigateTo("/me", replace: true);
+    }
 
     private async Task HandleLogin(LoginRequestDto model)
     {

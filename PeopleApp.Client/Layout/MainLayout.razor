@@ -1,4 +1,7 @@
 ﻿@inherits LayoutComponentBase
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Nav
+
 <div class="page">
     <div class="sidebar">
         <NavMenu />
@@ -14,3 +17,26 @@
         </article>
     </main>
 </div>
+
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var relative = Nav.ToBaseRelativePath(Nav.Uri);
+
+        // Rutas públicas (no deben forzar auth)
+        var isPublic =
+        relative.StartsWith("login", StringComparison.OrdinalIgnoreCase) ||
+        relative.StartsWith("register", StringComparison.OrdinalIgnoreCase);
+
+        if (isPublic) return;
+
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (state.User.Identity?.IsAuthenticated != true)
+        {
+            var returnUrl = Uri.EscapeDataString("/" + relative);
+            Nav.NavigateTo($"/login?returnUrl={returnUrl}", replace: true);
+        }
+    }
+}

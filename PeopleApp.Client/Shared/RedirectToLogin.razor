@@ -1,0 +1,18 @@
+@inject NavigationManager Nav
+
+@code {
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var relative = Nav.ToBaseRelativePath(Nav.Uri);
+
+        // evita loops
+        if (relative.StartsWith("login", StringComparison.OrdinalIgnoreCase) ||
+        relative.StartsWith("register", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        var returnUrl = Uri.EscapeDataString("/" + relative);
+        Nav.NavigateTo($"/login?returnUrl={returnUrl}", replace: true);
+    }
+}

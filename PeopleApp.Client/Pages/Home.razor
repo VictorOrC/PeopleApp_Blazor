@@ -1,17 +1,7 @@
 ﻿@page "/"
-@inject PeopleApp.Client.Services.Auth.AuthService AuthService
-@inject NavigationManager Nav
+@attribute [Authorize]
 
 <PageTitle>Home</PageTitle>
 
-<p>Cargando...</p>
-
-@code {
-    protected override async Task OnInitializedAsync()
-    {
-        if (!await AuthService.IsAuthenticatedAsync())
-            Nav.NavigateTo("/login", replace: true);
-        else
-            Nav.NavigateTo("/me", replace: true);
-    }
-}
+<h3>Inicio</h3>
+<p>Bienvenido.</p>
