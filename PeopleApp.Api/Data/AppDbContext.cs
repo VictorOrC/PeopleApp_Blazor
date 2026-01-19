@@ -12,5 +12,5 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     }
 
     // Aquí luego tu compañero agregará entidades del CRUD, por ejemplo:
-    // public DbSet<Person> Persons => Set<Person>();
+    public DbSet<Persona> Personas => Set<Persona>();
 }

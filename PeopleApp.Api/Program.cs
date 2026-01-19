@@ -75,7 +75,16 @@ builder.Services.AddCors(options =>
 });
 
 // Inyección de dependencia para TokenService
+
 builder.Services.AddScoped<TokenService>();
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseMySql(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        ServerVersion.AutoDetect(
+            builder.Configuration.GetConnectionString("DefaultConnection")
+        )
+    )
+);
 
 var app = builder.Build();
 

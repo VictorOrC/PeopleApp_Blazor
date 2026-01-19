@@ -1,0 +1,71 @@
+@page "/regpeople"
+@inject HttpClient Http
+@inject NavigationManager Nav
+
+<h3>Registrar Persona</h3>
+
+<EditForm Model="persona" OnValidSubmit="GuardarPersona">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label>Nombre</label>
+        <InputText class="form-control" @bind-Value="persona.Nombre" />
+    </div>
+
+    <div class="mb-3">
+        <label>Edad</label>
+        <InputNumber class="form-control" @bind-Value="persona.Edad" />
+    </div>
+
+    <div class="mb-3">
+        <label>Estatura (m)</label>
+        <InputNumber class="form-control" @bind-Value="persona.Estatura" />
+    </div>
+
+    <div class="mb-3">
+        <label>Peso (kg)</label>
+        <InputNumber class="form-control" @bind-Value="persona.Peso" />
+    </div>
+
+    <div class="mb-3">
+        <label>Descripción</label>
+        <InputTextArea class="form-control" @bind-Value="persona.Descripcion" />
+    </div>
+
+    <button class="btn btn-primary" type="submit">
+        Agregar
+    </button>
+</EditForm>
+
+@code {
+    Persona persona = new();
+
+    async Task GuardarPersona()
+    {
+        var response = await Http.PostAsJsonAsync("api/personas", persona);
+
+        if (response.IsSuccessStatusCode)
+        {
+            Nav.NavigateTo("/all-people");
+        }
+    }
+
+    public class Persona
+    {
+        [Required]
+        public string Nombre { get; set; } = string.Empty;
+
+        [Required]
+        public int Edad { get; set; }
+
+        [Required]
+        public double Estatura { get; set; }
+
+        [Required]
+        public double Peso { get; set; }
+
+        [Required]
+        public string Descripcion { get; set; } = string.Empty;
+    }
+}
