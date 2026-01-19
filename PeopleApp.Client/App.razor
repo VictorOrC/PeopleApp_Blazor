@@ -9,10 +9,8 @@
                 </Authorizing>
 
                 <NotAuthorized>
-                    <LayoutView Layout="@typeof(MainLayout)">
-                        <p role="alert">No autorizado.</p>
-                        @* Aquí después podemos redirigir a /login si quieres *@
-                    </LayoutView>
+                    <p style="display:none">NOT_AUTH</p>
+                    <RedirectToLogin />
                 </NotAuthorized>
             </AuthorizeRouteView>
 
@@ -20,9 +18,8 @@
         </Found>
 
         <NotFound>
-            <PageTitle>Not found</PageTitle>
             <LayoutView Layout="@typeof(MainLayout)">
-                <p role="alert">Sorry, there's nothing at this address.</p>
+                <p role="alert">Not found</p>
             </LayoutView>
         </NotFound>
     </Router>

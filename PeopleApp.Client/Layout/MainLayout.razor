@@ -1,4 +1,10 @@
 ﻿@inherits LayoutComponentBase
+@using Microsoft.AspNetCore.Components.Authorization
+@implements IDisposable
+
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Nav
+
 <div class="page">
     <div class="sidebar">
         <NavMenu />
@@ -14,3 +20,57 @@
         </article>
     </main>
 </div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        // ✅ escuchar cambios (logout por expiración, logout manual, etc.)
+        AuthStateProvider.AuthenticationStateChanged += OnAuthStateChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var relative = Nav.ToBaseRelativePath(Nav.Uri);
+
+        // Rutas públicas
+        var isPublic =
+        relative.StartsWith("login", StringComparison.OrdinalIgnoreCase) ||
+        relative.StartsWith("register", StringComparison.OrdinalIgnoreCase);
+
+        if (isPublic) return;
+
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (state.User.Identity?.IsAuthenticated != true)
+        {
+            var returnUrl = Uri.EscapeDataString("/" + relative);
+            Nav.NavigateTo($"/login?returnUrl={returnUrl}", replace: true);
+        }
+    }
+
+    private async void OnAuthStateChanged(Task<AuthenticationState> task)
+    {
+        var state = await task;
+        var isAuth = state.User?.Identity?.IsAuthenticated == true;
+
+        if (isAuth) return;
+
+        var relative = Nav.ToBaseRelativePath(Nav.Uri);
+
+        // Si ya estás en login/register, no redirijas (evitar loops)
+        var isPublic =
+        relative.StartsWith("login", StringComparison.OrdinalIgnoreCase) ||
+        relative.StartsWith("register", StringComparison.OrdinalIgnoreCase);
+
+        if (isPublic) return;
+
+        var returnUrl = Uri.EscapeDataString("/" + relative);
+        Nav.NavigateTo($"/login?returnUrl={returnUrl}", replace: true);
+    }
+
+    public void Dispose()
+    {
+        AuthStateProvider.AuthenticationStateChanged -= OnAuthStateChanged;
+    }
+}
