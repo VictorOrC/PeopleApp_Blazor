@@ -483,15 +483,8 @@ $RECYCLE.BIN/
 # Vim temporary swap files
 *.swp
 
-<<<<<<< HEAD
-bin/
-obj/
-**/bin/
-**/obj/
-=======
 ## .NET
 bin/
 obj/
 **/bin/
 **/obj/
->>>>>>> 842f9c730c93714403731eeb17251f1df27e5e71
