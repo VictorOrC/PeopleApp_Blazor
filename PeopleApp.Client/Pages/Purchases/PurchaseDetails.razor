@@ -1,0 +1,70 @@
+@page "/purchases/{Id:int}"
+@attribute [Authorize]
+
+@using PeopleApp.Client.Dtos.Purchases
+@inject PeopleApp.Client.Services.Purchases.PurchasesApiClient PurchasesApi
+@inject NavigationManager Nav
+
+<RadzenCard>
+    @if (_loading)
+    {
+        <p>Cargando compra...</p>
+    }
+    else if (_purchase is null)
+    {
+        <RadzenAlert Severity="AlertSeverity.Warning" Summary="No encontrada"
+            Detail="La compra no existe o no tienes acceso." />
+        <RadzenButton Text="Volver a compras" ButtonStyle="ButtonStyle.Light"
+            Click="@(() => Nav.NavigateTo("/purchases"))" />
+    }
+    else
+    {
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3>Compra #@_purchase.Id</h3>
+            <RadzenButton Text="Volver" ButtonStyle="ButtonStyle.Light" Click="@(() => Nav.NavigateTo("/purchases"))" />
+        </div>
+
+        <div class="row" style="gap:16px; margin-bottom:12px;">
+            <div><b>Fecha:</b> @_purchase.Date.ToString("yyyy-MM-dd")</div>
+            <div><b>Cliente:</b> @_purchase.CustomerName</div>
+            <div><b>Total:</b> @_purchase.Total</div>
+        </div>
+
+        <RadzenDataGrid Data="@_purchase.Lines" TItem="PurchaseLineDto" AllowPaging="false">
+            <Columns>
+                <RadzenDataGridColumn TItem="PurchaseLineDto" Property="ProductName" Title="Producto" />
+                <RadzenDataGridColumn TItem="PurchaseLineDto" Property="Quantity" Title="Cant." />
+                <RadzenDataGridColumn TItem="PurchaseLineDto" Property="UnitPrice" Title="Precio" />
+                <RadzenDataGridColumn TItem="PurchaseLineDto" Property="LineTotal" Title="Subtotal" />
+                <RadzenDataGridColumn TItem="PurchaseLineDto" Property="Description" Title="Descripción" />
+            </Columns>
+        </RadzenDataGrid>
+
+        <div style="margin-top:16px; display:flex; justify-content:flex-end;">
+            <!-- Botón PDF (por ahora lo dejamos deshabilitado hasta que exista endpoint) -->
+            <RadzenButton Text="Ver PDF" Icon="picture_as_pdf" ButtonStyle="ButtonStyle.Primary" Disabled="true" />
+        </div>
+    }
+</RadzenCard>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private bool _loading = true;
+    private PurchaseDto? _purchase;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _loading = true;
+        _purchase = null;
+
+        try
+        {
+            _purchase = await PurchasesApi.GetByIdAsync(Id);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

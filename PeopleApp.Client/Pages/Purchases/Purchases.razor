@@ -1,0 +1,79 @@
+@page "/purchases"
+@attribute [Authorize]
+
+@using PeopleApp.Client.Dtos.Purchases
+@inject PurchasesApiClient PurchasesApi
+@inject NavigationManager Nav
+@inject DialogService DialogService
+
+<RadzenCard>
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h3>Compras</h3>
+        <RadzenButton Text="Nueva compra" Icon="add_circle" ButtonStyle="ButtonStyle.Primary"
+            Click="OpenNewPurchaseDialog" />
+    </div>
+
+    <RadzenDataGrid Data="@_items" TItem="PurchaseListItemDto" AllowPaging="true" PageSize="10">
+        <Columns>
+            <RadzenDataGridColumn TItem="PurchaseListItemDto" Property="Id" Title="Id" />
+            <RadzenDataGridColumn TItem="PurchaseListItemDto" Title="Fecha">
+                <Template Context="p">@p.Date.ToString("yyyy-MM-dd")</Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="PurchaseListItemDto" Property="CustomerName" Title="Cliente" />
+            <RadzenDataGridColumn TItem="PurchaseListItemDto" Title="Total">
+                <Template Context="p">@p.Total</Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="PurchaseListItemDto" Title="">
+                <Template Context="p">
+                    <RadzenButton Text="Ver" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light"
+                        Click="@(() => Nav.NavigateTo($"/purchases/{p.Id}"))" />
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <RadzenAlert Severity="AlertSeverity.Error" Summary="Error" Detail="@_error" />
+    }
+</RadzenCard>
+
+@code {
+    private List<PurchaseListItemDto> _items = new();
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Load();
+    }
+
+    private async Task Load()
+    {
+        _error = null;
+        try
+        {
+            _items = await PurchasesApi.GetAllAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task OpenNewPurchaseDialog()
+    {
+        var result = await DialogService.OpenAsync<PurchaseNewDialog>(
+        "Nueva compra",
+        null,
+        new DialogOptions { Width = "900px", Height = "650px", Resizable = true, Draggable = true }
+        );
+
+        // El dialog va a regresar el Id creado (int?) o null si canceló
+        if (result is int newId)
+        {
+            await Load(); // refresca listado
+            Nav.NavigateTo($"/purchases/{newId}"); // o solo dejarlo en lista, tú decides
+        }
+    }
+}

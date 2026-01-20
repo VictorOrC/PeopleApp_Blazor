@@ -140,6 +140,25 @@ public class PurchasesController : ControllerBase
         return Ok(dto);
     }
 
+    [HttpGet]
+    public async Task<ActionResult<List<PurchaseListItemDto>>> GetAll()
+    {
+        var items = await _db.Purchases
+            .AsNoTracking()
+            .OrderByDescending(p => p.Id)
+            .Select(p => new PurchaseListItemDto
+            {
+                Id = p.Id,
+                Date = p.Date,
+                CustomerName = p.CustomerName,
+                Total = p.Total
+            })
+            .ToListAsync();
+
+        return Ok(items);
+    }
+
+
     // Método privado para armar el DTO de una compra completa.
     // ¿Por qué existe? Para no repetir el mismo mapping en Create y GetById.
     private async Task<PurchaseDto?> BuildDto(int id)
