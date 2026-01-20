@@ -9,12 +9,13 @@ public class PurchaseCreateDto
 
     public DateTime Date { get; set; }
 
-    [MinLength(1)]
+    [Required, MinLength(1)]
     public List<PurchaseLineCreateDto> Lines { get; set; } = new();
 }
 
 public class PurchaseLineCreateDto
 {
+    [Range(1, int.MaxValue)]
     public int ProductId { get; set; }
 
     [Range(1, 100000)]

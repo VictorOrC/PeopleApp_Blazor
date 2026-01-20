@@ -1,94 +1,185 @@
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using PeopleApp.Api.Data;
-using PeopleApp.Api.Dtos.Purchases;
-using PeopleApp.Api.Entities;
+using Microsoft.AspNetCore.Authorization;       // Para [Authorize] (proteger endpoints con JWT)
+using Microsoft.AspNetCore.Mvc;                 // Para ControllerBase, ActionResult, atributos [HttpGet], etc.
+using Microsoft.EntityFrameworkCore;            // Para Include, AsNoTracking, ToListAsync, etc.
+using PeopleApp.Api.Data;                       // AppDbContext (EF Core)
+using PeopleApp.Api.Dtos.Purchases;             // DTOs: PurchaseDto, PurchaseCreateDto, PurchaseLineDto...
+using PeopleApp.Api.Entities;                   // Entidades EF: Purchase, PurchaseLine, Product
 
 namespace PeopleApp.Api.Controllers;
 
+// [Authorize] = exige JWT válido. Si no mandas token -> 401 Unauthorized.
+// Esto es clave porque compras no deben ser públicas.
 [Authorize]
+
+// [ApiController] habilita validaciones automáticas y comportamientos típicos de API.
+// Ejemplo: binding de [FromBody], respuestas 400 más consistentes, etc.
 [ApiController]
+
+// Define la ruta base: /api/purchases
 [Route("api/purchases")]
 public class PurchasesController : ControllerBase
 {
+    // AppDbContext = la "puerta" a la base de datos por EF Core.
     private readonly AppDbContext _db;
 
+    // Inyección de dependencias (DI):
+    // ASP.NET crea el controller y le pasa el DbContext ya configurado.
     public PurchasesController(AppDbContext db) => _db = db;
 
+    // POST /api/purchases
+    // Se usa para crear una compra nueva con sus líneas.
     [HttpPost]
     public async Task<ActionResult<PurchaseDto>> Create([FromBody] PurchaseCreateDto dto)
     {
+        // Si el DTO no cumple validaciones (Required, Range, etc.), regresamos 400 con detalles.
+        // Nota: Con [ApiController], muchas veces esto ya se hace automático,
+        // pero así queda explícito.
         if (!ModelState.IsValid) return ValidationProblem(ModelState);
+        // Normaliza el customer name
+        dto.CustomerName = dto.CustomerName.Trim();
 
-        // 1) Cargar productos usados (para validar y obtener precio)
+        // Reglas de negocio adicionales:
+        // Regla: CustomerName no puede estar vacío (solo espacios) 
+        if (dto.CustomerName.Length == 0)
+            return BadRequest("CustomerName is required.");
+
+        // Normaliza fecha: si viene default usa UtcNow
+        var date = dto.Date == default ? DateTime.UtcNow : dto.Date;
+
+        // Regla: no permitir futuro (más de 1 día adelante, por si hay diferencia de hora)
+        if (date > DateTime.UtcNow.AddDays(1))
+            return BadRequest("Date cannot be in the future.");
+
+        // Regla: no permitir demasiado pasado (ej. más de 30 días atrás)
+        if (date < DateTime.UtcNow.AddDays(-30))
+            return BadRequest("Date is too old.");
+
+
+        // 1) Validar productos + obtener precio real desde DB
+        // Extraemos los ProductId de las líneas, quitando repetidos.
         var productIds = dto.Lines.Select(l => l.ProductId).Distinct().ToList();
+
+        // Traemos de la DB SOLO los productos activos que coincidan con esos IDs.
+        // ¿Por qué? Para:
+        // - validar que existen
+        // - obtener el Price real para congelarlo en UnitPrice
         var products = await _db.Products
             .Where(p => p.IsActive && productIds.Contains(p.Id))
             .ToListAsync();
 
+        // Si la cantidad que encontramos en DB no coincide con los IDs solicitados,
+        // significa que algún ProductId no existe o está inactivo.
         if (products.Count != productIds.Count)
             return BadRequest("Uno o más productos no existen o están inactivos.");
 
-        // 2) Crear Purchase + Lines congelando UnitPrice
+        // 2) Construir la entidad Purchase (encabezado) y sus PurchaseLine (detalle)
+        // Nota: aquí NO confiamos en que el cliente nos mande el precio:
+        // el precio lo tomamos de la DB (product.Price) para evitar manipulación.
         var purchase = new Purchase
         {
+            // Trim() para limpiar espacios al inicio/final
             CustomerName = dto.CustomerName.Trim(),
-            Date = dto.Date == default ? DateTime.UtcNow : dto.Date,
+
+            Date = date,
+
+            // Convertimos cada línea del DTO a una entidad PurchaseLine
             Lines = dto.Lines.Select(l =>
             {
+                // Buscamos el producto correspondiente en la lista ya cargada.
+                // Single() asegura que haya exactamente 1.
                 var product = products.Single(p => p.Id == l.ProductId);
+
                 return new PurchaseLine
                 {
+                    // FK del producto
                     ProductId = product.Id,
+
+                    // Cantidad
                     Quantity = l.Quantity,
+
+                    // Descripción opcional
                     Description = l.Description,
+
+                    // "Congelar" precio del producto en este momento.
+                    // Esto es clave para que si mañana cambia el precio del producto,
+                    // las compras pasadas NO cambien.
                     UnitPrice = product.Price
                 };
             }).ToList()
         };
 
+        // Calcular total en el backend (no confiar en el cliente).
+        // Total = suma de (UnitPrice * Quantity) de cada línea
         purchase.Total = purchase.Lines.Sum(x => x.UnitPrice * x.Quantity);
 
+        // Guardar en DB:
+        // - _db.Purchases.Add() agrega el Purchase
+        // - y EF detecta también Lines y las inserta por relación
         _db.Purchases.Add(purchase);
         await _db.SaveChangesAsync();
 
-        // devolver el detalle creado
+        // Devolver el recurso creado (201 Created) y además el DTO completo.
+        // CreatedAtAction:
+        // - coloca el header "Location" apuntando a GET /api/purchases/{id}
+        // - y te regresa el body con el DTO (más útil para el frontend)
         return CreatedAtAction(nameof(GetById), new { id = purchase.Id }, await BuildDto(purchase.Id));
     }
 
+    // GET /api/purchases/{id}
+    // Se usa para consultar una compra por Id, incluyendo sus líneas y productos.
     [HttpGet("{id:int}")]
     public async Task<ActionResult<PurchaseDto>> GetById(int id)
     {
+        // Construimos el DTO desde DB
         var dto = await BuildDto(id);
+
+        // Si no existe -> 404
         if (dto is null) return NotFound();
+
+        // Si existe -> 200 OK con el DTO
         return Ok(dto);
     }
 
+    // Método privado para armar el DTO de una compra completa.
+    // ¿Por qué existe? Para no repetir el mismo mapping en Create y GetById.
     private async Task<PurchaseDto?> BuildDto(int id)
     {
+        // Traemos la compra desde DB:
+        // - AsNoTracking() => más rápido, porque solo estamos leyendo (no editaremos)
+        // - Include(p => p.Lines) => incluye las líneas (detalle)
+        // - ThenInclude(l => l.Product) => incluye el producto de cada línea (para obtener Name)
         var purchase = await _db.Purchases
             .AsNoTracking()
             .Include(p => p.Lines)
             .ThenInclude(l => l.Product)
             .FirstOrDefaultAsync(p => p.Id == id);
 
+        // Si no existe en DB, regresamos null
         if (purchase is null) return null;
 
+        // Convertimos entidad -> DTO (lo que se envía al cliente)
+        // Importante: aquí controlas exactamente qué campos expones.
         return new PurchaseDto
         {
             Id = purchase.Id,
             Date = purchase.Date,
             CustomerName = purchase.CustomerName,
             Total = purchase.Total,
+
+            // Mapping de cada línea a DTO
             Lines = purchase.Lines.Select(l => new PurchaseLineDto
             {
                 Id = l.Id,
                 ProductId = l.ProductId,
+
+                // Product.Name lo tenemos gracias a ThenInclude
                 ProductName = l.Product.Name,
+
                 UnitPrice = l.UnitPrice,
                 Quantity = l.Quantity,
                 Description = l.Description,
+
+                // LineTotal lo calculamos (no dependemos del cliente)
                 LineTotal = l.UnitPrice * l.Quantity
             }).ToList()
         };
