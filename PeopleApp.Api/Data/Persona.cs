@@ -22,7 +22,7 @@ public class Persona
     public double Peso { get; set; }
 
     [Required]
-    public string Descripcion { get; set; }
+    public string Descripcion { get; set; } = string.Empty;
 
     // más adelante:
     // public string UserId { get; set; }
