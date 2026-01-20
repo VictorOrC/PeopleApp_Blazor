@@ -4,6 +4,12 @@ using Microsoft.EntityFrameworkCore;            // Para Include, AsNoTracking, T
 using PeopleApp.Api.Data;                       // AppDbContext (EF Core)
 using PeopleApp.Api.Dtos.Purchases;             // DTOs: PurchaseDto, PurchaseCreateDto, PurchaseLineDto...
 using PeopleApp.Api.Entities;                   // Entidades EF: Purchase, PurchaseLine, Product
+using iText.Kernel.Pdf;
+using iText.Layout;
+using iText.Layout.Element;
+using iText.Layout.Borders;
+using iText.Layout.Properties;
+using System.Security.Claims;
 
 namespace PeopleApp.Api.Controllers;
 
@@ -203,4 +209,98 @@ public class PurchasesController : ControllerBase
             }).ToList()
         };
     }
+
+    // GET /api/purchases/{id}/export-pdf
+    [HttpGet("{id:int}/export-pdf")]
+    public async Task<IActionResult> ExportPdf(int id)
+    {
+        // Reutilizamos el mismo método que ya existe
+        var purchase = await BuildDto(id);
+        if (purchase is null) return NotFound();
+
+        using var ms = new MemoryStream();
+        var writer = new PdfWriter(ms);
+        var pdf = new PdfDocument(writer);
+        var document = new Document(pdf);
+
+        // ===== TÍTULO =====
+        document.Add(
+            new Paragraph("Documentación de compra")
+                .SetFontSize(18)
+                .SetTextAlignment(TextAlignment.CENTER)
+        );
+        document.Add(new Paragraph("\n"));
+
+        // ===== USUARIO (desde JWT) =====
+        var nombre = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value ?? "";
+        var apellido = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Surname)?.Value ?? "";
+        var correo = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value ?? "";
+
+        var nombreCompleto = $"{nombre} {apellido}".Trim();
+
+        var header = new Table(2).UseAllAvailableWidth();
+
+        header.AddCell(
+            new Cell()
+                .Add(new Paragraph($"{nombreCompleto}\n{correo}"))
+                .SetBorder(Border.NO_BORDER)
+        );
+
+        header.AddCell(
+            new Cell()
+                .Add(new Paragraph(
+                    $"Lugar: Los Mochis, Sinaloa\n" +
+                    $"Fecha: {DateTime.Now:dd/MM/yyyy}\n" +
+                    $"Hora: {DateTime.Now:HH:mm}"
+                ))
+                .SetTextAlignment(TextAlignment.RIGHT)
+                .SetBorder(Border.NO_BORDER)
+        );
+
+        document.Add(header);
+        document.Add(new Paragraph("\n"));
+
+        // ===== DATOS DE COMPRA =====
+        document.Add(new Paragraph($"Compra #{purchase.Id}"));
+        document.Add(new Paragraph($"Cliente: {purchase.CustomerName}"));
+        document.Add(new Paragraph($"Total: {purchase.Total:C}"));
+        document.Add(new Paragraph("\n"));
+
+        // ===== TABLA =====
+        var table = new Table(5).UseAllAvailableWidth();
+        table.AddHeaderCell("Producto");
+        table.AddHeaderCell("Cant.");
+        table.AddHeaderCell("Precio");
+        table.AddHeaderCell("Subtotal");
+        table.AddHeaderCell("Descripción");
+
+        foreach (var l in purchase.Lines)
+        {
+            table.AddCell(l.ProductName);
+            table.AddCell(l.Quantity.ToString());
+            table.AddCell(l.UnitPrice.ToString("C"));
+            table.AddCell(l.LineTotal.ToString("C"));
+            table.AddCell(l.Description ?? "");
+        }
+
+        document.Add(table);
+
+        // ===== PIE DE PÁGINA =====
+        document.Add(new Paragraph("\n"));
+        document.Add(
+            new Paragraph(
+                "Todos los derechos reservados a S.A de C.V por cualquier situación que represente " +
+                "algún problema denominante o el uso de otras palabras y nombres erróneos o mal " +
+                "representados en contextos aparentes pero intencionalmente semi formales. " +
+                "(20/01/2026, 10:24 a.m. Los Mochis, Sinaloa.)"
+            )
+            .SetFontSize(8)
+            .SetTextAlignment(TextAlignment.CENTER)
+        );
+
+        document.Close();
+
+        return File(ms.ToArray(), "application/pdf", $"Compra_{purchase.Id}.pdf");
+    }
+
 }

@@ -20,4 +20,11 @@ public class PurchasesApiClient
         res.EnsureSuccessStatusCode();
         return (await res.Content.ReadFromJsonAsync<PurchaseDto>())!;
     }
+    public async Task<byte[]> GetPdfAsync(int purchaseId)
+    {
+        var res = await _http.GetAsync($"api/purchases/{purchaseId}/export-pdf");
+        res.EnsureSuccessStatusCode();
+        return await res.Content.ReadAsByteArrayAsync();
+    }
+
 }

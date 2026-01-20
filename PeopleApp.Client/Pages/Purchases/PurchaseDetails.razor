@@ -4,6 +4,7 @@
 @using PeopleApp.Client.Dtos.Purchases
 @inject PeopleApp.Client.Services.Purchases.PurchasesApiClient PurchasesApi
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 <RadzenCard>
     @if (_loading)
@@ -41,8 +42,11 @@
         </RadzenDataGrid>
 
         <div style="margin-top:16px; display:flex; justify-content:flex-end;">
-            <!-- Botón PDF (por ahora lo dejamos deshabilitado hasta que exista endpoint) -->
-            <RadzenButton Text="Ver PDF" Icon="picture_as_pdf" ButtonStyle="ButtonStyle.Primary" Disabled="true" />
+            <RadzenButton Text="Ver PDF"
+              Icon="picture_as_pdf"
+              ButtonStyle="ButtonStyle.Primary"
+              Click="DescargarPdf" />
+
         </div>
     }
 </RadzenCard>
@@ -66,5 +70,19 @@
         {
             _loading = false;
         }
+    }
+    private async Task DescargarPdf()
+    {
+        if (_purchase is null) return;
+
+        var bytes = await PurchasesApi.GetPdfAsync(_purchase.Id);
+        var base64 = Convert.ToBase64String(bytes);
+
+        await JS.InvokeVoidAsync(
+            "downloadFile",
+            $"Compra_{_purchase.Id}.pdf",
+            "application/pdf",
+            base64
+        );
     }
 }
