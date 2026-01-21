@@ -116,7 +116,8 @@
 
     protected override async Task OnInitializedAsync()
     {
-        personas = await Http.GetFromJsonAsync<List<Persona>>("api/personas");
+        personas = await Http.GetFromJsonAsync<List<Persona>>("api/personas")
+                   ?? new List<Persona>();
     }
 
     void AbrirModal()
@@ -133,9 +134,13 @@
     async Task GuardarPersona()
     {
         await Http.PostAsJsonAsync("api/personas", personaNueva);
-        personas = await Http.GetFromJsonAsync<List<Persona>>("api/personas");
+
+        personas = await Http.GetFromJsonAsync<List<Persona>>("api/personas")
+                    ?? new List<Persona>();
+
         mostrarModal = false;
     }
+
 
     public class Persona
     {

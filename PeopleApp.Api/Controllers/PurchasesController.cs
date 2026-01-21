@@ -10,6 +10,8 @@ using iText.Layout.Element;
 using iText.Layout.Borders;
 using iText.Layout.Properties;
 using System.Security.Claims;
+using iText.IO.Image;
+
 
 namespace PeopleApp.Api.Controllers;
 
@@ -223,12 +225,29 @@ public class PurchasesController : ControllerBase
         var pdf = new PdfDocument(writer);
         var document = new Document(pdf);
 
+        // ===== LOGO =====
+        var logoPath = Path.Combine(
+            Directory.GetCurrentDirectory(),
+            "Assets",
+            "logo.png"
+        );
+
+        var logoData = ImageDataFactory.Create(logoPath);
+        var logo = new Image(logoData)
+        .ScaleToFit(140, 140)
+        .SetFixedPosition(36, pdf.GetDefaultPageSize().GetTop() - 80);
+
+        document.Add(new Paragraph("\n"));
+        document.Add(logo);
+
         // ===== TÍTULO =====
         document.Add(
             new Paragraph("Documentación de compra")
                 .SetFontSize(18)
                 .SetTextAlignment(TextAlignment.CENTER)
+                .SetMarginTop(40)
         );
+
         document.Add(new Paragraph("\n"));
 
         // ===== USUARIO (desde JWT) =====
