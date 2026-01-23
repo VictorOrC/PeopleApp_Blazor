@@ -1,0 +1,25 @@
+@page "/dashboard"
+
+<h3>Dashboard - Ventas</h3>
+
+<RadzenCard Style="padding:20px">
+    <h4>Ventas por día</h4>
+
+    <RadzenChart Style="height:400px">
+        <RadzenColumnSeries Data="@sales"
+                          CategoryProperty="Date"
+                          ValueProperty="Total"
+                          Title="Ventas" />
+    </RadzenChart>
+</RadzenCard>
+
+@code {
+    List<SalesByDayDto> sales = new()
+    {
+        new() { Date = DateTime.Today.AddDays(-4), Total = 5200 },
+        new() { Date = DateTime.Today.AddDays(-3), Total = 8900 },
+        new() { Date = DateTime.Today.AddDays(-2), Total = 4300 },
+        new() { Date = DateTime.Today.AddDays(-1), Total = 12000 },
+        new() { Date = DateTime.Today, Total = 7600 }
+    };
+}
