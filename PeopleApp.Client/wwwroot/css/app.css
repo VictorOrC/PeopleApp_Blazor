@@ -190,3 +190,26 @@ code {
     width: 400px;
     border-radius: 8px;
 }
+
+
+
+/* Altura estándar para inputs */
+.input-std .rz-inputtext,
+.input-std input {
+    height: 38px;
+    line-height: 38px;
+    box-sizing: border-box;
+}
+
+.input-std .rz-spinner input {
+    height: 38px;
+    line-height: 38px;
+}
+
+/* Altura estándar para botones */
+.btn-std {
+    height: 38px;
+    display: inline-flex;
+    align-items: center;
+}
+

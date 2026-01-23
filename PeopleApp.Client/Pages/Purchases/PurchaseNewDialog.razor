@@ -1,5 +1,9 @@
 @using PeopleApp.Client.Dtos.Purchases
 @using PeopleApp.Client.Dtos.Products
+@using Microsoft.AspNetCore.Components.Authorization
+
+@inject AuthenticationStateProvider AuthStateProvider
+
 @inject ProductsApiClient ProductsApi
 @inject PurchasesApiClient PurchasesApi
 @inject DialogService DialogService
@@ -11,7 +15,8 @@
     <div class="row" style="gap: 12px;">
         <div style="flex: 1;">
             <RadzenLabel Text="Cliente" />
-            <RadzenTextBox Style="width:100%" @bind-Value="_model.CustomerName" Name="CustomerName" />
+            <RadzenTextBox Style="width:100%" @bind-Value="_model.CustomerName" Disabled="true" />
+
             <RadzenRequiredValidator Component="CustomerName" Text="Cliente es requerido" />
         </div>
 
@@ -26,34 +31,49 @@
     <h4>Detalle</h4>
 
     <RadzenCard Style="margin-bottom: 12px;">
-        <div class="row" style="gap: 12px; align-items: end;">
-            <div style="flex: 1;">
+        <div style="
+        display:grid;
+        grid-template-columns: 1.6fr 160px 1.4fr 240px;
+        gap:12px;
+        align-items:stretch;">
+
+            <div>
                 <RadzenLabel Text="Producto" />
-                <RadzenAutoComplete Style="width:100%" Data="@_productSuggestions.Select(p => p.Name)"
-                    Placeholder="Escribe para buscar..." LoadData="@OnProductSearch" MinLength="2"
-                    @bind-Value="_productText" Change="@OnProductTextChanged" />
+                <RadzenAutoComplete CssClass="input-std" Style="width:100%"
+                    Data="@_productSuggestions.Select(p => p.Name)" Placeholder="Escribe para buscar..."
+                    LoadData="@OnProductSearch" MinLength="2" @bind-Value="_productText"
+                    Change="@OnProductTextChanged" />
             </div>
 
-            <div style="width: 160px;">
+            <div>
                 <RadzenLabel Text="Cantidad" />
-                <RadzenNumeric Style="width:100%" @bind-Value="_draft.Quantity" Min="1" />
+                <RadzenNumeric CssClass="input-std" Style="width:100%" @bind-Value="_draft.Quantity" Min="1" />
             </div>
 
-            <div style="flex: 1;">
+            <div>
                 <RadzenLabel Text="Descripción" />
-                <RadzenTextBox Style="width:100%" @bind-Value="_draft.Description" />
+                <RadzenTextBox CssClass="input-std" Style="width:100%" @bind-Value="_draft.Description" />
             </div>
 
-            <div style="width: 180px;">
-                <RadzenButton Text="Agregar" ButtonStyle="ButtonStyle.Primary" Click="@AddLine"
-                    Disabled="@(!_canAddLine)" />
-                <RadzenButton Text="Cancelar" Style="margin-left:8px" ButtonStyle="ButtonStyle.Light"
+            <div style="
+            display:flex;
+            gap:10px;
+            justify-content:flex-end;
+            align-items:flex-end;">
+
+                <RadzenButton CssClass="btn-std" Icon="add" Text="Agregar" ButtonStyle="ButtonStyle.Primary"
+                    Disabled="@(!_canAddLine)" Click="@AddLine" />
+
+                <RadzenButton CssClass="btn-std" Icon="close" Text="Limpiar" ButtonStyle="ButtonStyle.Light"
                     Click="@ClearDraft" />
             </div>
         </div>
     </RadzenCard>
 
-    <RadzenDataGrid @ref="_grid" Data="@_uiLines" TItem="UiLine" AllowPaging="false">
+
+
+
+    <RadzenDataGrid EmptyText="Sin registros" @ref="_grid" Data="@_uiLines" TItem="UiLine" AllowPaging="false">
         <Columns>
             <RadzenDataGridColumn TItem="UiLine" Property="ProductName" Title="Producto" />
             <RadzenDataGridColumn TItem="UiLine" Property="Quantity" Title="Cant." />
@@ -63,7 +83,7 @@
             <RadzenDataGridColumn TItem="UiLine" Title="">
                 <Template Context="item">
                     <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
-                        Click="@(() => RemoveLine(item))" />
+                        Click="@(() => RemoveLineAsync(item))" />
                 </Template>
             </RadzenDataGridColumn>
         </Columns>
@@ -101,6 +121,24 @@
 
 
     private bool _canAddLine => _selectedProduct is not null && _draft.Quantity >= 1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = state.User;
+
+        var first = user.Claims.FirstOrDefault(c => c.Type == "firstName")?.Value;
+        var last = user.Claims.FirstOrDefault(c => c.Type == "lastName")?.Value;
+
+        // fallback al email si por alguna razón no vienen
+        var email = user.Claims.FirstOrDefault(c => c.Type.EndsWith("/emailaddress"))?.Value;
+
+        var fullName = $"{first} {last}".Trim();
+        _model.CustomerName = string.IsNullOrWhiteSpace(fullName) ? (email ?? "Usuario") : fullName;
+    }
+
+
+
 
     private async Task OnProductSearch(Radzen.LoadDataArgs args)
     {
@@ -147,14 +185,18 @@
     }
 
 
-    private void RemoveLine(UiLine item)
+    private async Task RemoveLineAsync(UiLine item)
     {
         var index = _uiLines.IndexOf(item);
         if (index < 0) return;
 
         _uiLines.RemoveAt(index);
         if (index < _model.Lines.Count) _model.Lines.RemoveAt(index);
+
+        if (_grid is not null)
+            await _grid.Reload();
     }
+
 
     private async Task Save()
     {
