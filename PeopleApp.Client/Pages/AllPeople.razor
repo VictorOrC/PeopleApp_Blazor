@@ -1,17 +1,12 @@
 @page "/all-people"
 @using System.ComponentModel.DataAnnotations
+@using System.Net.Http.Json
 @inject HttpClient Http
-@inject IJSRuntime JS
 
-
-<h3>Cat·logo de Personas</h3>
+<h3>Cat√°logo de Personas</h3>
 
 <button class="btn btn-primary mb-3" @onclick="AbrirModal">
     Registrar persona
-</button>
-
-<button class="btn btn-secondary mb-3 ms-2" @onclick="DescargarPdf">
-    Descargar PDF
 </button>
 
 <!-- TABLA -->
@@ -22,7 +17,7 @@
             <th>Edad</th>
             <th>Estatura</th>
             <th>Peso</th>
-            <th>DescripciÛn</th>
+            <th>Descripci√≥n</th>
         </tr>
     </thead>
     <tbody>
@@ -72,7 +67,7 @@
                 </div>
 
                 <div class="mb-3">
-                    <label>DescripciÛn</label>
+                    <label>Descripci√≥n</label>
                     <InputTextArea class="form-control" @bind-Value="personaNueva.Descripcion" />
                 </div>
 
@@ -87,60 +82,40 @@
 }
 
 @code {
-
-    async Task DescargarPdf()
-    {
-        var response = await Http.GetAsync("api/personas/export-pdf");
-
-        if (!response.IsSuccessStatusCode)
-            return;
-
-        var bytes = await response.Content.ReadAsByteArrayAsync();
-
-        var base64 = Convert.ToBase64String(bytes);
-
-        await JS.InvokeVoidAsync(
-            "downloadFile",
-            "personas.pdf",
-            "application/pdf",
-            base64
-        );
-    }
-
-
-    List<Persona> personas = new();
-
-    bool mostrarModal = false;
-
-    Persona personaNueva = new();
+    private List<Persona> personas = new();
+    private bool mostrarModal = false;
+    private Persona personaNueva = new();
 
     protected override async Task OnInitializedAsync()
     {
-        personas = await Http.GetFromJsonAsync<List<Persona>>("api/personas")
-                   ?? new List<Persona>();
+        await CargarPersonas();
     }
 
-    void AbrirModal()
+    private async Task CargarPersonas()
+    {
+        personas = await Http.GetFromJsonAsync<List<Persona>>("api/personas")
+        ?? new List<Persona>();
+    }
+
+    private void AbrirModal()
     {
         personaNueva = new Persona();
         mostrarModal = true;
     }
 
-    void CerrarModal()
+    private void CerrarModal()
     {
         mostrarModal = false;
     }
 
-    async Task GuardarPersona()
+    private async Task GuardarPersona()
     {
         await Http.PostAsJsonAsync("api/personas", personaNueva);
 
-        personas = await Http.GetFromJsonAsync<List<Persona>>("api/personas")
-                    ?? new List<Persona>();
+        await CargarPersonas();
 
         mostrarModal = false;
     }
-
 
     public class Persona
     {
@@ -161,5 +136,4 @@
         [Required]
         public string Descripcion { get; set; } = string.Empty;
     }
-
 }

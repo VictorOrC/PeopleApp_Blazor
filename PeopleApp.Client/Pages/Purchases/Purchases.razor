@@ -52,22 +52,43 @@
     <RadzenDataGrid Data="@_items" TItem="PurchaseListItemDto" AllowPaging="true" PageSize="10">
         <Columns>
             <RadzenDataGridColumn TItem="PurchaseListItemDto" Property="Id" Title="Id" />
+
             <RadzenDataGridColumn TItem="PurchaseListItemDto" Title="Fecha">
                 <Template Context="p">@p.Date.ToString("yyyy-MM-dd")</Template>
             </RadzenDataGridColumn>
+
             <RadzenDataGridColumn TItem="PurchaseListItemDto" Property="CustomerName" Title="Cliente" />
+
             <RadzenDataGridColumn TItem="PurchaseListItemDto" Title="Total">
                 <Template Context="p">@p.Total</Template>
             </RadzenDataGridColumn>
 
-            <RadzenDataGridColumn TItem="PurchaseListItemDto" Title="">
+            <RadzenDataGridColumn TItem="PurchaseListItemDto" Title="Acciones" Width="160px"
+                TextAlign="TextAlign.Center">
                 <Template Context="p">
-                    <RadzenButton Text="Ver" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light"
-                        Click="@(() => Nav.NavigateTo($"/purchases/{p.Id}"))" />
+                    <div style="display:flex; gap:8px; justify-content:center; align-items:center;">
+                        <!-- Ver (siempre) -->
+                        <RadzenButton Icon="visibility" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light"
+                            Click="@(() => Nav.NavigateTo($"/purchases/{p.Id}"))" />
+
+                        @if (_isAdmin)
+                        {
+                            <!-- Editar (solo Admin) -->
+                            <RadzenButton Icon="edit" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Warning"
+                                Click="@(() => Nav.NavigateTo($"/purchases/{p.Id}"))" />
+
+                            <!-- Eliminar (solo Admin) -->
+                            <RadzenButton Icon="delete" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Danger"
+                                Click="@(() => DeletePlaceholder(p.Id))" />
+                        }
+                    </div>
                 </Template>
             </RadzenDataGridColumn>
+
+
         </Columns>
     </RadzenDataGrid>
+
 
     @if (!string.IsNullOrWhiteSpace(_error))
     {
@@ -78,11 +99,20 @@
 @code {
     private List<PurchaseListItemDto> _items = new();
     private string? _error;
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
+
+    private bool _isAdmin;
+
 
     protected override async Task OnInitializedAsync()
     {
+        var state = await AuthenticationStateTask;
+        _isAdmin = state.User.IsInRole("Admin");
+
         await Load();
     }
+
 
     private async Task Load()
     {
@@ -155,5 +185,12 @@
         _filters = new();
         await Load(); // vuelve a cargar sin filtros
     }
+
+    private void DeletePlaceholder(int id)
+    {
+        // TODO: aquí después conectamos DELETE real con confirmación
+        Console.WriteLine($"Eliminar compra {id} (solo UI por ahora)");
+    }
+
 
 }

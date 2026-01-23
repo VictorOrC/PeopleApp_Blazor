@@ -8,6 +8,7 @@ using System.Text;
 using PeopleApp.Api.Services;
 
 
+
 var builder = WebApplication.CreateBuilder(args);
 
 // 1) Controllers (API real)
@@ -87,6 +88,15 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 );
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    var config = services.GetRequiredService<IConfiguration>();
+
+    await IdentitySeeder.SeedAdminAsync(services, config);
+}
+
 
 // Seed de roles (Admin/User) al iniciar la aplicación
 using (var scope = app.Services.CreateScope())
