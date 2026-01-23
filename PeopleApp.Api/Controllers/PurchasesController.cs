@@ -149,11 +149,30 @@ public class PurchasesController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<PurchaseListItemDto>>> GetAll()
+    public async Task<ActionResult<List<PurchaseListItemDto>>> GetAll(
+    [FromQuery] string? search,
+    [FromQuery] DateTime? from,
+    [FromQuery] DateTime? to,
+    [FromQuery] decimal? minTotal,
+    [FromQuery] decimal? maxTotal)
     {
-        var items = await _db.Purchases
-            .AsNoTracking()
-            .OrderByDescending(p => p.Id)
+        var q = _db.Purchases.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim();
+            q = q.Where(p => p.CustomerName.Contains(s) || p.Id.ToString().Contains(s));
+            // Si luego agregas Folio: || p.Folio.Contains(s)
+        }
+
+        if (from is not null) q = q.Where(p => p.Date >= from.Value);
+        if (to is not null) q = q.Where(p => p.Date <= to.Value);
+
+        if (minTotal is not null) q = q.Where(p => p.Total >= minTotal.Value);
+        if (maxTotal is not null) q = q.Where(p => p.Total <= maxTotal.Value);
+
+        var items = await q
+            .OrderByDescending(p => p.Date)
             .Select(p => new PurchaseListItemDto
             {
                 Id = p.Id,
@@ -165,6 +184,7 @@ public class PurchasesController : ControllerBase
 
         return Ok(items);
     }
+
 
 
     // Método privado para armar el DTO de una compra completa.

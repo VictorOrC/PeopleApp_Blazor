@@ -13,6 +13,42 @@
             Click="OpenNewPurchaseDialog" />
     </div>
 
+    <RadzenCard Style="margin-bottom:12px;">
+        <div
+            style="display:grid; grid-template-columns: 1.4fr 220px 220px 180px 180px auto; gap:12px; align-items:end;">
+            <div>
+                <RadzenLabel Text="Buscar" />
+                <RadzenTextBox Style="width:100%" @bind-Value="_filters.Search" Placeholder="Cliente o Id..." />
+            </div>
+
+            <div>
+                <RadzenLabel Text="Desde" />
+                <RadzenDatePicker Style="width:100%" @bind-Value="_filters.From" DateFormat="yyyy-MM-dd" />
+            </div>
+
+            <div>
+                <RadzenLabel Text="Hasta" />
+                <RadzenDatePicker Style="width:100%" @bind-Value="_filters.To" DateFormat="yyyy-MM-dd" />
+            </div>
+
+            <div>
+                <RadzenLabel Text="Total mín." />
+                <RadzenNumeric Style="width:100%" @bind-Value="_filters.MinTotal" Min="0" />
+            </div>
+
+            <div>
+                <RadzenLabel Text="Total máx." />
+                <RadzenNumeric Style="width:100%" @bind-Value="_filters.MaxTotal" Min="0" />
+            </div>
+
+            <div style="display:flex; gap:10px; justify-content:flex-end;">
+                <RadzenButton Text="Aplicar" Icon="search" ButtonStyle="ButtonStyle.Primary" Click="@ApplyFilters" />
+                <RadzenButton Text="Limpiar" Icon="close" ButtonStyle="ButtonStyle.Light" Click="@ClearFilters" />
+            </div>
+        </div>
+    </RadzenCard>
+
+
     <RadzenDataGrid Data="@_items" TItem="PurchaseListItemDto" AllowPaging="true" PageSize="10">
         <Columns>
             <RadzenDataGridColumn TItem="PurchaseListItemDto" Property="Id" Title="Id" />
@@ -76,4 +112,48 @@
             Nav.NavigateTo($"/purchases/{newId}"); // o solo dejarlo en lista, tú decides
         }
     }
+
+    private PurchaseFilters _filters = new();
+
+    private class PurchaseFilters
+    {
+        public string? Search { get; set; }
+        public DateTime? From { get; set; }
+        public DateTime? To { get; set; }
+        public decimal? MinTotal { get; set; }
+        public decimal? MaxTotal { get; set; }
+    }
+
+    private async Task ApplyFilters()
+    {
+        _error = null;
+
+        // Validación de rango de fechas (UX pro)
+        if (_filters.From is not null && _filters.To is not null && _filters.From > _filters.To)
+        {
+            _error = "La fecha 'Desde' no puede ser mayor que 'Hasta'.";
+            return;
+        }
+
+        try
+        {
+            _items = await PurchasesApi.GetAllAsync(
+            _filters.Search,
+            _filters.From,
+            _filters.To,
+            _filters.MinTotal,
+            _filters.MaxTotal);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task ClearFilters()
+    {
+        _filters = new();
+        await Load(); // vuelve a cargar sin filtros
+    }
+
 }
