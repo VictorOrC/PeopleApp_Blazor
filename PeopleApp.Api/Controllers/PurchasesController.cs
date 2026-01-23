@@ -149,30 +149,11 @@ public class PurchasesController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<PurchaseListItemDto>>> GetAll(
-    [FromQuery] string? search,
-    [FromQuery] DateTime? from,
-    [FromQuery] DateTime? to,
-    [FromQuery] decimal? minTotal,
-    [FromQuery] decimal? maxTotal)
+    public async Task<ActionResult<List<PurchaseListItemDto>>> GetAll()
     {
-        var q = _db.Purchases.AsNoTracking();
-
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-            var s = search.Trim();
-            q = q.Where(p => p.CustomerName.Contains(s) || p.Id.ToString().Contains(s));
-            // Si luego agregas Folio: || p.Folio.Contains(s)
-        }
-
-        if (from is not null) q = q.Where(p => p.Date >= from.Value);
-        if (to is not null) q = q.Where(p => p.Date <= to.Value);
-
-        if (minTotal is not null) q = q.Where(p => p.Total >= minTotal.Value);
-        if (maxTotal is not null) q = q.Where(p => p.Total <= maxTotal.Value);
-
-        var items = await q
-            .OrderByDescending(p => p.Date)
+        var items = await _db.Purchases
+            .AsNoTracking()
+            .OrderByDescending(p => p.Id)
             .Select(p => new PurchaseListItemDto
             {
                 Id = p.Id,
@@ -184,7 +165,6 @@ public class PurchasesController : ControllerBase
 
         return Ok(items);
     }
-
 
 
     // Método privado para armar el DTO de una compra completa.
@@ -260,30 +240,9 @@ public class PurchasesController : ControllerBase
         document.Add(new Paragraph("\n"));
         document.Add(logo);
 
-        // ===== TÍTULO =====
-        document.Add(
-            new Paragraph("Documentación de compra")
-                .SetFontSize(18)
-                .SetTextAlignment(TextAlignment.CENTER)
-                .SetMarginTop(40)
-        );
-
-        document.Add(new Paragraph("\n"));
-
-        // ===== USUARIO (desde JWT) =====
-        var nombre = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value ?? "";
-        var apellido = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Surname)?.Value ?? "";
-        var correo = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value ?? "";
-
-        var nombreCompleto = $"{nombre} {apellido}".Trim();
+        // ===== FECHA =====
 
         var header = new Table(2).UseAllAvailableWidth();
-
-        header.AddCell(
-            new Cell()
-                .Add(new Paragraph($"{nombreCompleto}\n{correo}"))
-                .SetBorder(Border.NO_BORDER)
-        );
 
         header.AddCell(
             new Cell()
@@ -297,6 +256,14 @@ public class PurchasesController : ControllerBase
         );
 
         document.Add(header);
+
+        // ===== TÍTULO =====
+        document.Add(
+            new Paragraph("Documentación de compra")
+                .SetFontSize(18)
+                .SetTextAlignment(TextAlignment.CENTER)
+        );
+
         document.Add(new Paragraph("\n"));
 
         // ===== DATOS DE COMPRA =====
