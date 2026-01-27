@@ -61,6 +61,8 @@ builder.Services
 
 builder.Services.AddAuthorization();
 
+builder.Services.AddScoped<ReportsService>();
+
 
 // 5) CORS (para que el Client WASM consuma tu API)
 builder.Services.AddCors(options =>
