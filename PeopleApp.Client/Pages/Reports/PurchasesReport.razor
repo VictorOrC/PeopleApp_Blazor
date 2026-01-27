@@ -1,18 +1,38 @@
 @page "/reports/purchases"
 @using PeopleApp.Client.Dtos.Reports
 @using PeopleApp.Client.Services.ApiClients
+@using System.Globalization
 @inject ReportsApiClient ReportsApi
 
 <RadzenCard Style="padding:16px">
-    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+    <!-- HEADER -->
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
         <h3 style="margin:0;">Purchases by Month</h3>
 
         <div style="display:flex; gap:10px; align-items:center;">
             <RadzenDropDown TValue="int" Style="width:140px" Data="@monthsOptions" @bind-Value="months"
-                Change="@(_ => LoadAsync())" Placeholder="Months" />
+                Change="@(_ => OnMonthsChanged())" Placeholder="Months" />
 
-            <RadzenButton Text="Refresh" Icon="refresh" Click="@LoadAsync" ButtonStyle="ButtonStyle.Primary" />
+            <RadzenButton Text="Refresh" Icon="refresh" Click="@LoadByRangeAsync" ButtonStyle="ButtonStyle.Primary" />
         </div>
+    </div>
+
+    <div style="display:flex; gap:10px; align-items:center; margin-top:12px; flex-wrap:wrap;">
+        <RadzenDropDown TValue="int" Style="width:140px" Data="@availableYears" @bind-Value="selectedYear"
+            Change="@OnYearChanged" Placeholder="Año" AllowClear="false" />
+
+    </div>
+
+
+    <!-- SLICER (Power BI style) -->
+    <div class="slicer">
+        @foreach (var m in monthFilters)
+        {
+            <RadzenButton Text="@m.Label" Size="ButtonSize.Small" Class="@GetMonthPillClass(m)"
+                Click="@(() => SelectMonth(m))" />
+        }
+
+        <RadzenButton Text="All" Size="ButtonSize.Small" Class="@GetAllPillClass()" Click="@ClearMonthFilter" />
     </div>
 
     <div style="margin-top:12px;">
@@ -28,6 +48,7 @@
         }
         else
         {
+            <!-- KPIs -->
             <div style="display:flex; gap:16px; margin-bottom:12px; flex-wrap:wrap;">
                 <RadzenCard Style="padding:12px; min-width:220px;">
                     <div style="font-size:12px; opacity:.7">Total Purchases</div>
@@ -45,6 +66,7 @@
                 </RadzenCard>
             </div>
 
+            <!-- Chart mensual (contexto histórico) -->
             <RadzenChart Style="height:340px">
                 <RadzenColumnSeries Data="@data" CategoryProperty="Label" ValueProperty="PurchasesCount"
                     Title="Purchases" />
@@ -55,40 +77,183 @@
                 <RadzenTooltip Visible="true" />
             </RadzenChart>
 
+            <!-- Top productos -->
+            <RadzenCard Style="padding:12px; margin-top:16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:12px;">
+                    <h4 style="margin:0;">Top productos (por monto)</h4>
+
+                    <RadzenDropDown TValue="int" Style="width:120px" Data="@topOptions" @bind-Value="top"
+                        Change="@(_ => LoadByRangeAsync())" />
+                </div>
+
+                @if (topProducts.Count == 0)
+                {
+                    <RadzenAlert Severity="AlertSeverity.Info">
+                        No hay productos en este rango.
+                    </RadzenAlert>
+                }
+                else
+                {
+                    <RadzenChart Style="height:360px;">
+                        <RadzenBarSeries Data="@topProducts" CategoryProperty="ProductName" ValueProperty="TotalAmount"
+                            Title="Monto" />
+                        <RadzenCategoryAxis Padding="20" />
+                        <RadzenValueAxis />
+                        <RadzenTooltip Visible="true" />
+                        <RadzenLegend Visible="false" />
+                    </RadzenChart>
+                }
+            </RadzenCard>
+
             <div style="margin-top:10px; opacity:.7; font-size:12px;">
-                Tip: change the range to see the chart update (data comes from API).
+                Tip: usa los botones para filtrar un mes específico (KPIs y Top productos) y el dropdown para cambiar el
+                contexto histórico.
             </div>
         }
     </div>
 </RadzenCard>
 
+
 @code {
+
+
+    // Slicer por año + mes
+    private record MonthFilter(string Label, int Year, int Month);
+
+    private List<int> availableYears = new();
+    private int selectedYear;
+
+
+    private List<MonthFilter> monthFilters = new();
+    private MonthFilter? selectedMonth;
+
+    // Rango central del dashboard (TODO depende de esto)
+    private DateTime filterFrom;
+    private DateTime filterTo;
+
     private bool isLoading = true;
 
+    // Selector de meses (para chart histórico)
     private int months = 12;
-    private List<int> monthsOptions = new() { 3, 6, 12, 24, 36 };
+    private List<int> monthsOptions = new() { 1, 3, 6, 12, 24, 36 };
 
+    // Data mensual (chart por mes)
     private List<MonthlyPurchasesDto> data = new();
 
+    // KPIs (del rango filterFrom/filterTo)
+    private SalesKpisDto kpis = new();
     private int totalPurchases;
     private decimal totalAmount;
     private decimal avgPerPurchase;
 
+    // Top productos (del rango filterFrom/filterTo)
+    private int top = 10;
+    private List<int> topOptions = new() { 5, 10, 15, 20 };
+    private List<TopProductDto> topProducts = new();
+
+    // Pool fijo para slicer (para poder cambiar meses aunque months=1)
+    private const int slicerMonths = 12;
+
     protected override async Task OnInitializedAsync()
     {
-        await LoadAsync();
+        var now = DateTime.Today;
+
+        // Año inicial (por defecto el actual)
+        selectedYear = now.Year;
+
+        // ALL = todo el año seleccionado
+        filterFrom = new DateTime(selectedYear, 1, 1);
+        filterTo = new DateTime(selectedYear, 12, 31);
+
+        await LoadByRangeAsync();
     }
 
-    private async Task LoadAsync()
+
+    private async Task LoadByRangeAsync()
     {
         try
         {
             isLoading = true;
-            data = await ReportsApi.GetMonthlyPurchasesAsync(months);
 
-            totalPurchases = data.Sum(x => x.PurchasesCount);
-            totalAmount = data.Sum(x => x.TotalAmount);
-            avgPerPurchase = totalPurchases == 0 ? 0 : totalAmount / totalPurchases;
+            var kpisTask = ReportsApi.GetKpisAsync(filterFrom, filterTo);
+            var topTask = ReportsApi.GetTopProductsAsync(filterFrom, filterTo, top);
+
+            // Chart mensual (depende del dropdown)
+            var monthlyTask = ReportsApi.GetMonthlyPurchasesAsync(months);
+
+            // Slicer fijo (pool de meses para construir año/mes)
+            var slicerTask = ReportsApi.GetMonthlyPurchasesAsync(slicerMonths);
+
+            await Task.WhenAll(kpisTask, topTask, monthlyTask, slicerTask);
+
+            kpis = kpisTask.Result;
+            topProducts = topTask.Result;
+
+            var monthlyData = monthlyTask.Result; // contexto por dropdown
+            var slicerData = slicerTask.Result; // pool para años/meses
+
+            // ============================
+            // 1) AÑOS DISPONIBLES (solo años con ventas)
+            // ============================
+            availableYears = slicerData
+            .Select(x => x.Year)
+            .Distinct()
+            .OrderByDescending(x => x)
+            .ToList();
+
+            // Si no hay año seleccionado o ya no existe, elige el más reciente
+            if (availableYears.Count > 0 && !availableYears.Contains(selectedYear))
+                selectedYear = availableYears[0];
+
+            if (availableYears.Count > 0 && selectedYear == 0)
+                selectedYear = availableYears[0];
+
+
+            // ============================
+            // 2) MESES DISPONIBLES DEL AÑO SELECCIONADO (píldoras sin año)
+            // ============================
+            var monthsOfSelectedYear = slicerData
+            .Where(x => x.Year == selectedYear)
+            .OrderByDescending(x => x.Month)
+            .ToList();
+
+            // Meses en español (ene, feb, mar...)
+            var esMx = new CultureInfo("es-MX");
+
+            monthFilters = monthsOfSelectedYear
+            .Select(x => new MonthFilter(
+            esMx.DateTimeFormat.GetAbbreviatedMonthName(x.Month), // "ene", "feb"...
+            x.Year,
+            x.Month))
+            .ToList();
+
+            // Si el mes seleccionado ya no existe (por cambio de año), lo limpiamos
+            if (selectedMonth != null)
+            {
+                var stillExists = monthFilters.Any(m => m.Year == selectedMonth.Year && m.Month == selectedMonth.Month);
+                if (!stillExists) selectedMonth = null;
+            }
+
+            // ============================
+            // 3) DATA DEL CHART
+            // ============================
+            // - Si hay mes seleccionado => mostrar solo ese mes (1 barra)
+            // - Si no => mostrar contexto (últimos N meses)
+            if (selectedMonth != null)
+            {
+                data = slicerData
+                .Where(x => x.Year == selectedMonth.Year && x.Month == selectedMonth.Month)
+                .ToList();
+            }
+            else
+            {
+                data = monthlyData;
+            }
+
+            // KPIs en UI (desde API)
+            totalPurchases = kpis.PurchasesCount;
+            totalAmount = kpis.TotalSales;
+            avgPerPurchase = kpis.AvgTicket;
         }
         finally
         {
@@ -96,4 +261,51 @@
             StateHasChanged();
         }
     }
+
+    private async Task SelectMonth(MonthFilter month)
+    {
+        selectedMonth = month;
+
+        // Rango exacto del mes seleccionado
+        filterFrom = new DateTime(month.Year, month.Month, 1);
+        filterTo = filterFrom.AddMonths(1).AddDays(-1);
+
+        await LoadByRangeAsync();
+    }
+
+    private async Task ClearMonthFilter()
+    {
+        selectedMonth = null;
+
+        filterFrom = new DateTime(selectedYear, 1, 1);
+        filterTo = new DateTime(selectedYear, 12, 31);
+
+        await LoadByRangeAsync();
+    }
+
+
+    private async Task OnMonthsChanged()
+    {
+        await LoadByRangeAsync();
+    }
+
+    // ✅ Nuevo: cuando cambias el año, regeneramos meses y limpiamos mes seleccionado
+    private async Task OnYearChanged(object? _ = null)
+    {
+        // Al cambiar año:
+        selectedMonth = null;
+
+        // ALL = todo el año seleccionado
+        filterFrom = new DateTime(selectedYear, 1, 1);
+        filterTo = new DateTime(selectedYear, 12, 31);
+
+        await LoadByRangeAsync();
+    }
+
+
+    private string GetMonthPillClass(MonthFilter m)
+    => $"slicer-pill {(selectedMonth != null && selectedMonth.Year == m.Year && selectedMonth.Month == m.Month ? "slicer-on" : "slicer-off")}";
+
+    private string GetAllPillClass()
+    => $"slicer-pill {(selectedMonth == null ? "slicer-on" : "slicer-off")}";
 }

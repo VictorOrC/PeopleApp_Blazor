@@ -213,3 +213,30 @@ code {
     align-items: center;
 }
 
+/* --- Slicer pills (Power BI style) --- */
+.slicer {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.slicer-pill {
+  border-radius: 999px !important;   /* forma de píldora */
+  padding: 6px 12px !important;
+  min-height: 30px;
+  font-weight: 600;
+  text-transform: none;
+}
+
+/* Estado normal (no seleccionado) */
+.slicer-pill.slicer-off {
+  border: 2px solid rgba(0, 0, 0, 0.12) !important;
+  background: #f5f6f8 !important;
+}
+
+/* Estado seleccionado (activo) */
+.slicer-pill.slicer-on {
+  border: 3px solid rgba(0, 0, 0, 0.85) !important;
+  box-shadow: 0 0 0 2px rgba(0,0,0,0.08);
+}
