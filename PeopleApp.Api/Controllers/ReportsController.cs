@@ -37,4 +37,30 @@ public class ReportsController : ControllerBase
         return Ok(data);
     }
 
+
+    [HttpGet("purchases/kpis")]
+    public async Task<ActionResult<SalesKpisDto>> GetKpis(
+    [FromQuery] DateTime? from = null,
+    [FromQuery] DateTime? to = null)
+    {
+        var end = (to ?? DateTime.UtcNow).Date;
+        var start = (from ?? end.AddDays(-6)).Date;
+
+        var data = await _reports.GetSalesKpisAsync(start, end);
+        return Ok(data);
+    }
+
+    [HttpGet("products/top")]
+    public async Task<ActionResult<List<TopProductDto>>> GetTopProducts(
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null,
+        [FromQuery] int top = 10)
+    {
+        var end = (to ?? DateTime.UtcNow).Date;
+        var start = (from ?? end.AddDays(-6)).Date;
+
+        var data = await _reports.GetTopProductsAsync(start, end, top);
+        return Ok(data);
+    }
+
 }
