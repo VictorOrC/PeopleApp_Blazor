@@ -1,0 +1,99 @@
+@page "/reports/purchases"
+@using PeopleApp.Client.Dtos.Reports
+@using PeopleApp.Client.Services.ApiClients
+@inject ReportsApiClient ReportsApi
+
+<RadzenCard Style="padding:16px">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+        <h3 style="margin:0;">Purchases by Month</h3>
+
+        <div style="display:flex; gap:10px; align-items:center;">
+            <RadzenDropDown TValue="int" Style="width:140px" Data="@monthsOptions" @bind-Value="months"
+                Change="@(_ => LoadAsync())" Placeholder="Months" />
+
+            <RadzenButton Text="Refresh" Icon="refresh" Click="@LoadAsync" ButtonStyle="ButtonStyle.Primary" />
+        </div>
+    </div>
+
+    <div style="margin-top:12px;">
+        @if (isLoading)
+        {
+            <RadzenProgressBar Mode="ProgressBarMode.Indeterminate" Style="width:100%" />
+        }
+        else if (data.Count == 0)
+        {
+            <RadzenAlert Severity="AlertSeverity.Info">
+                No purchases found for the selected range.
+            </RadzenAlert>
+        }
+        else
+        {
+            <div style="display:flex; gap:16px; margin-bottom:12px; flex-wrap:wrap;">
+                <RadzenCard Style="padding:12px; min-width:220px;">
+                    <div style="font-size:12px; opacity:.7">Total Purchases</div>
+                    <div style="font-size:22px; font-weight:700">@totalPurchases</div>
+                </RadzenCard>
+
+                <RadzenCard Style="padding:12px; min-width:220px;">
+                    <div style="font-size:12px; opacity:.7">Total Amount</div>
+                    <div style="font-size:22px; font-weight:700">@totalAmount.ToString("C")</div>
+                </RadzenCard>
+
+                <RadzenCard Style="padding:12px; min-width:220px;">
+                    <div style="font-size:12px; opacity:.7">Avg / Purchase</div>
+                    <div style="font-size:22px; font-weight:700">@avgPerPurchase.ToString("C")</div>
+                </RadzenCard>
+            </div>
+
+            <RadzenChart Style="height:340px">
+                <RadzenColumnSeries Data="@data" CategoryProperty="Label" ValueProperty="PurchasesCount"
+                    Title="Purchases" />
+
+                <RadzenCategoryAxis Padding="20" />
+                <RadzenValueAxis />
+                <RadzenLegend Visible="true" Position="LegendPosition.Bottom" />
+                <RadzenTooltip Visible="true" />
+            </RadzenChart>
+
+            <div style="margin-top:10px; opacity:.7; font-size:12px;">
+                Tip: change the range to see the chart update (data comes from API).
+            </div>
+        }
+    </div>
+</RadzenCard>
+
+@code {
+    private bool isLoading = true;
+
+    private int months = 12;
+    private List<int> monthsOptions = new() { 3, 6, 12, 24, 36 };
+
+    private List<MonthlyPurchasesDto> data = new();
+
+    private int totalPurchases;
+    private decimal totalAmount;
+    private decimal avgPerPurchase;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            isLoading = true;
+            data = await ReportsApi.GetMonthlyPurchasesAsync(months);
+
+            totalPurchases = data.Sum(x => x.PurchasesCount);
+            totalAmount = data.Sum(x => x.TotalAmount);
+            avgPerPurchase = totalPurchases == 0 ? 0 : totalAmount / totalPurchases;
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+}

@@ -1,0 +1,70 @@
+@page "/reports/daily-sales"
+@using PeopleApp.Client.Dtos.Reports
+@inject PeopleApp.Client.Services.ApiClients.ReportsApiClient ReportsApi
+
+<RadzenCard Style="padding:16px">
+    <h3 style="margin:0 0 12px 0;">Ventas por día</h3>
+
+    <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:end;">
+        <div>
+            <label style="font-size:12px; opacity:.7;">From</label>
+            <RadzenDatePicker @bind-Value="from" Style="width:160px" DateFormat="yyyy-MM-dd" />
+        </div>
+        <div>
+            <label style="font-size:12px; opacity:.7;">To</label>
+            <RadzenDatePicker @bind-Value="to" Style="width:160px" DateFormat="yyyy-MM-dd" />
+        </div>
+
+        <RadzenButton Text="Apply" Icon="filter_alt" Click="@LoadAsync" ButtonStyle="ButtonStyle.Primary" />
+    </div>
+
+    <div style="margin-top:12px;">
+        @if (isLoading)
+        {
+            <RadzenProgressBar Mode="ProgressBarMode.Indeterminate" Style="width:100%" />
+        }
+        else
+        {
+            <!-- Ventas ($) -->
+            <RadzenChart Style="height:300px; margin-bottom:16px;">
+                <RadzenColumnSeries Data="@data" CategoryProperty="Label" ValueProperty="TotalAmount" Title="Ventas ($)" />
+                <RadzenCategoryAxis Padding="20" />
+                <RadzenValueAxis />
+                <RadzenTooltip Visible="true" />
+            </RadzenChart>
+
+            <!-- # Compras -->
+            <RadzenChart Style="height:240px;">
+                <RadzenLineSeries Data="@data" CategoryProperty="Label" ValueProperty="PurchasesCount" Title="# Compras" />
+                <RadzenCategoryAxis Padding="20" />
+                <RadzenValueAxis />
+                <RadzenTooltip Visible="true" />
+            </RadzenChart>
+        }
+    </div>
+</RadzenCard>
+
+@code {
+    private bool isLoading = true;
+
+    private DateTime from = DateTime.Today.AddDays(-6);
+    private DateTime to = DateTime.Today;
+
+    private List<DailySalesDto> data = new();
+
+    protected override async Task OnInitializedAsync()
+    => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            isLoading = true;
+            data = await ReportsApi.GetDailySalesAsync(from, to);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

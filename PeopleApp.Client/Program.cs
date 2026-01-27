@@ -9,6 +9,7 @@ using PeopleApp.Client.Auth;
 using Blazored.LocalStorage;
 using PeopleApp.Client.Services.Products;
 using PeopleApp.Client.Services.Purchases;
+using PeopleApp.Client.Services.ApiClients;
 
 using Radzen;
 
@@ -37,6 +38,12 @@ builder.Services.AddScoped<ContextMenuService>();
 
 builder.Services.AddScoped<ProductsApiClient>();
 builder.Services.AddScoped<PurchasesApiClient>();
+
+builder.Services.AddRadzenComponents();
+
+builder.Services.AddScoped<ReportsApiClient>();
+
+
 
 // Registrar HttpClient con AuthHeaderHandler correctamente
 builder.Services.AddScoped(sp =>
