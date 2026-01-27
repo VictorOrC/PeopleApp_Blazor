@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using PeopleApp.Api.Services;
+using PeopleApp.Api.Options;
+
 
 
 
@@ -63,6 +65,10 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddScoped<ReportsService>();
 
+builder.Services.Configure<DemoSeedOptions>(builder.Configuration.GetSection("DemoSeed"));
+builder.Services.AddScoped<DemoPurchaseSeeder>();
+
+
 
 // 5) CORS (para que el Client WASM consuma tu API)
 builder.Services.AddCors(options =>
@@ -90,6 +96,14 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 );
 
 var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var demoSeeder = scope.ServiceProvider.GetRequiredService<DemoPurchaseSeeder>();
+    await demoSeeder.SeedAsync();
+}
+
 
 using (var scope = app.Services.CreateScope())
 {
